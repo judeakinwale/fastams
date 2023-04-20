@@ -1,4 +1,5 @@
 from pydantic import BaseSettings
+from datetime import timedelta
 
 
 class Settings(BaseSettings):
@@ -14,3 +15,9 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+
+class JWTSettings:
+    algorithm = "HS256"
+    secret_key = "mysecretkey"
+    access_token_expire = 30
+    access_token_expire_minutes = 30
