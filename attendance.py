@@ -2,10 +2,13 @@ from fastapi import Depends, HTTPException, status, APIRouter, Response, UploadF
 from sqlalchemy.orm import Session
 from sqlite_database import get_db, Base # for sqlite db
 # from database import get_db, Base # for postgres db
+from shutil import copyfileobj
 from datetime import date, timedelta
+import numpy as np
 import models
 import schemas
 import utils
+import json
 
 router = APIRouter()
 
@@ -38,26 +41,31 @@ def create_attendance_history(email: str, file: UploadFile = File(...), db: Sess
   attendance_history = get_attendance_history.first()
 
   if attendance_history:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have signed in with this email: {email} found. Sign out instead')
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have signed in with this email: {email}. Sign out instead')
 
-  
-  # # generate unique name for image
-  # random_chars = utils.random_string(5)
-  # file_extension = utils.get_file_extension(file.filename)
-  # relative_image_path = f"./training_images/{user.first_name}-{user.email}-{random_chars}.{file_extension}"
-
-  # # save file to training images folder
-  # with open(relative_image_path, "w") as buffer:
-  #   print(buffer)
-  #   copyfileobj(file.file, buffer)
+  user_face_encoding = np.array(json.loads(user.face_encoding))
 
   # get image and face encodings from uploaded file
   image_encoding, face_encoding = utils.check_face_in_picture(file.file)
+  # image_encoding_str = json.dumps(image_encoding.tolist())
+  image_encoding_str = json.dumps([]) # Image encoding is not needed
+  face_encoding_str = json.dumps(face_encoding.tolist())
 
   # check if image matches
-  image_matches = utils.check_face_match(user.face_encoding, face_encoding)
+  image_matches = utils.check_face_match(user_face_encoding, face_encoding)
+  print(image_matches)
   if not image_matches:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Matching face not found. Try Again.')
+
+  # generate unique name for image
+  random_chars = utils.random_string(2)
+  file_extension = utils.get_file_extension(file.filename)
+  relative_image_path = f"./attendance_images/{user.first_name}-{user.email}-{today}-{random_chars}{file_extension}"
+
+  # save file to attendance images folder
+  with open(relative_image_path, "wb") as buffer:
+    # print(buffer)
+    copyfileobj(file.file, buffer)
 
   # update user instance with image and encodings
   updated_payload = {
@@ -66,8 +74,8 @@ def create_attendance_history(email: str, file: UploadFile = File(...), db: Sess
     "user_id": user.id,
     "location_id": location.id,
     "image": relative_image_path, 
-    "image_encoding": image_encoding, 
-    "face_encoding": face_encoding, 
+    "image_encoding": image_encoding_str, 
+    "face_encoding": face_encoding_str, 
     "is_signed_in": True,
   }  
 
@@ -89,6 +97,7 @@ def update_attendance_history(email: str, db: Session = Depends(get_db)):
     models.AttendanceHistory.email == email, 
     models.AttendanceHistory.created_at > today, 
     models.AttendanceHistory.created_at < tomorrow, 
+    models.AttendanceHistory.is_signed_out != True,
   )
   attendance_history = get_attendance_history.first()
 
@@ -96,7 +105,7 @@ def update_attendance_history(email: str, db: Session = Depends(get_db)):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this email: {email} found')
 
   update_data = {"is_signed_out": True}
-  get_attendance_history.filter(models.AttendanceHistory.id == attendance_history_id).update(update_data, synchronize_session=False)
+  get_attendance_history.filter(models.AttendanceHistory.id == attendance_history.id).update(update_data, synchronize_session=False)
   db.commit()
   db.refresh(attendance_history)
   return {"status": "success", "data": attendance_history}

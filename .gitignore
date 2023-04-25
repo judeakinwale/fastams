@@ -1,3 +1,5 @@
 .env
+monogo_app.py
 __pycache__/
 training_images/
+attendance_images/
