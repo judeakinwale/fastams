@@ -24,7 +24,7 @@ app.add_middleware(
 
 app.include_router(user.router, tags=['User'], prefix='/api/v1/user')
 app.include_router(location.router, tags=['Location'], prefix='/api/v1/location')
-app.include_router(attendance.router, tags=['Location'], prefix='/api/v1/attendance')
+app.include_router(attendance.router, tags=['Attendance'], prefix='/api/v1/attendance')
 
 
 @app.get("/")
