@@ -29,9 +29,9 @@ def create_user(
   first_name: str = Form(...), 
   last_name: str = Form(...),
   email: str = Form(...),
-  location_id: Form | None = None,
-  password: Form | None = None,
-  file: UploadFile | None = None, 
+  location_id: str | None = Form(None),
+  password: str | None = Form(None),
+  file: UploadFile | None = File(None), 
   db: Session = Depends(get_db)
 ):
 # def create_user(payload: schemas.CreateUser = Depends(), file: UploadFile | None = None, db: Session = Depends(get_db)):
@@ -41,6 +41,7 @@ def create_user(
     "last_name": last_name,
     "email": email,
     "location_id": location_id,
+    "password": password,
   } # convert payload to dictionary
   print({"payload.dict": payload_dict})
   # payload_dict = payload.dict() # convert payload to dictionary
@@ -51,8 +52,10 @@ def create_user(
   if db_user:
       raise HTTPException(status_code=400, detail="Email already registered")
 
-  if payload_dict["password"]:
-    password = payload_dict.pop("password")
+  # if payload_dict["password"]:
+  # if "password" in payload_dict:
+  if password:
+    # password = payload_dict.pop("password")
     # print(payload_dict)
     updated_payload = {**payload_dict, "hashed_password": utils.get_password_hash(password)}
 
@@ -60,7 +63,7 @@ def create_user(
   if file:
     # generate unique name for image
     file_extension = utils.get_file_extension(file.filename)
-    relative_image_path = f"./training_images/{user.first_name}-{user.email}-{random_chars}{file_extension}"
+    relative_image_path = f"./training_images/{first_name}-{email}-{random_chars}{file_extension}"
 
     # save file to training images folder
     with open(relative_image_path, "wb") as buffer:
@@ -80,7 +83,7 @@ def create_user(
 
   # generate a qr code
   user_email = updated_payload["email"]
-  user_qr_code = utils.generate_qr_code(user_email, f"qr_code/{user_email}-{random_chars}")
+  user_qr_code = utils.generate_qr_code(user_email, f"./qr_code/{user_email}-{random_chars}")
   updated_payload["qr_code"] = user_qr_code
   updated_payload["qr_code_content"] = user_email
 
