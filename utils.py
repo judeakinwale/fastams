@@ -86,6 +86,39 @@ def get_file_extension(filePath: str) -> str:
   return file_extension
 
 
+def validate_email(email: str) -> bool:
+  import re
+ 
+  # Make a regular expression
+  # for validating an Email
+  regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+
+  if(re.fullmatch(regex, email)):
+    return True
+  return False
+
+
+def generate_qr_code(data_str: str, file_path: str) -> str:
+  import qrcode
+  img = qrcode.make(data_str)
+  type(img)  # qrcode.image.pil.PilImage
+  full_path = f"{file_path}-qr.png"
+  img.save(full_path)
+  return full_path
+
+
+def read_qr_code(file_path: str) -> str | None:
+  try:
+    img = cv2.imread(filename)
+    detect = cv2.QRCodeDetector()
+    value, points, straight_qrcode = detect.detectAndDecode(img)
+    return value
+  except Exception() as e:
+    print(e)
+    return
+
+
+# facial recognition utils
 def check_face_in_picture(imagePath: str):
   try:
     # TODO: reduce frame size and image resolution
@@ -102,3 +135,4 @@ def check_face_match(user_face_encoding, attendance_face_encoding):
   if True in matches:
     return True
   return False
+# facial recognition utils

@@ -20,8 +20,10 @@ class User(Base):
   image = Column(String, nullable=True)
   image_encoding = Column(Text, nullable=True)
   face_encoding = Column(Text, nullable=True)
+  qr_code = Column(String, nullable=True)
+  qr_code_content = Column(Text, nullable=True)
   # location_id = Column(GUID, ForeignKey("locations.id"))
-  location_id = Column(Integer, ForeignKey("locations.id"))
+  location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
   is_active = Column(Boolean, nullable=False, default=True) # for sqlite db
   # is_active = Column(Boolean, nullable=False, server_default='True') # for postgres db
   created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
@@ -59,10 +61,12 @@ class AttendanceHistory(Base):
   # user_id = Column(GUID, ForeignKey("users.id"))
   user_id = Column(Integer, ForeignKey("users.id"))
   # location_id = Column(GUID, ForeignKey("locations.id"))
-  location_id = Column(Integer, ForeignKey("locations.id"))
+  location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
   image = Column(String, nullable=False)
   image_encoding = Column(Text, nullable=False)
   face_encoding = Column(Text, nullable=False)
+  qr_code = Column(String, nullable=True)
+  qr_code_content = Column(Text, nullable=True)
   is_signed_in = Column(Boolean, nullable=False, default=False) # for sqlite db
   is_signed_out = Column(Boolean, nullable=False, default=False) # for sqlite db
   is_active = Column(Boolean, nullable=False, default=True) # for sqlite db

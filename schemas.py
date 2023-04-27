@@ -3,26 +3,34 @@ from typing import List
 from pydantic import BaseModel
 
 
-class AttendanceHistory(BaseModel):
-  id: int | None = None
-  # id: str | None = None
+class BaseAttendanceHistory(BaseModel):
   email: str
   user_id: int
-  location_id: int
-  phone: str | None = None
+  location_id: int | None = None
   image: str | None = None
+  qr_code: str | None = None
+  is_active: bool = True
+
+  class Config:
+    orm_mode = True
+    allow_population_by_field_name = True
+    arbitrary_types_allowed = True
+
+class AttendanceHistory(BaseAttendanceHistory):
+  id: int | None = None
+  # id: str | None = None
+  phone: str | None = None
+  # image: str | None = None
   image_encoding: str | None = None
   face_encoding: str | None = None
+  # qr_code: str | None = None
+  qr_code_content: str | None = None
   is_signed_in: bool = False
   is_signed_out: bool = False
   is_active: bool = True
   created_at: datetime | None = None
   updated_at: datetime | None = None
 
-  class Config:
-    orm_mode = True
-    allow_population_by_field_name = True
-    arbitrary_types_allowed = True
 
 class ListAttendanceHistoryResponse(BaseModel):
   status: str
@@ -36,22 +44,12 @@ class AttendanceHistoryResponse(BaseModel):
 
 
 
-class User(BaseModel):
-  id: int | None = None
-  # id: str | None = None
+class BaseUser(BaseModel):
   first_name: str
   last_name: str
   email: str
-  hashed_password: str | None = None
-  phone: str | None = None
   image: str | None = None
-  image_encoding: str | None = None
-  face_encoding: str | None = None
-  location_id: int
-  is_active: bool = True
-  created_at: datetime | None = None
-  updated_at: datetime | None = None
-  attendance_history: List[AttendanceHistory] | None = []
+  location_id: int | None = None
 
   class Config:
     orm_mode = True
@@ -59,8 +57,22 @@ class User(BaseModel):
     arbitrary_types_allowed = True
 
 
-class CreateUser(User):
-  password: str
+class CreateUser(BaseUser):
+  password: str | None = None
+
+class User(BaseUser):
+  id: int | None = None
+  # id: str | None = None
+  hashed_password: str | None = None
+  phone: str | None = None
+  image_encoding: str | None = None
+  face_encoding: str | None = None
+  qr_code: str | None = None
+  qr_code_content: str | None = None
+  is_active: bool = True
+  created_at: datetime | None = None
+  updated_at: datetime | None = None
+  attendance_history: List[AttendanceHistory] | None = []
 
 
 class ListUserResponse(BaseModel):
@@ -75,24 +87,28 @@ class UserResponse(BaseModel):
 
 
 
-class Location(BaseModel):
-  id: int | None = None
-  # id: str | None = None
+class BaseLocation(BaseModel):
   name: str
   address: str
   description: str | None = None
   phone: str | None = None
   is_active: bool = True
+
+  class Config:
+    orm_mode = True
+    allow_population_by_field_name = True
+    arbitrary_types_allowed = True
+
+
+class Location(BaseLocation):
+  id: int | None = None
+  # id: str | None = None
   created_at: datetime | None = None
   updated_at: datetime | None = None
   attendance_history: List[AttendanceHistory] | None = []
   # users: User | None = None
   users: List[User] | None = []
 
-  class Config:
-    orm_mode = True
-    allow_population_by_field_name = True
-    arbitrary_types_allowed = True
 
 class ListLocationResponse(BaseModel):
   status: str

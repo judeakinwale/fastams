@@ -11,8 +11,8 @@ router = APIRouter()
 
 
 # [...] get all locations
-# @router.get('/', response_model=list[schemas.Location])
-@router.get('/')
+@router.get('/', response_model=schemas.ListLocationResponse)
+# @router.get('/')
 def get_locations(db: Session = Depends(get_db), limit: int = 10, page: int = 1, search: str = ''):
   skip = (page - 1) * limit
 
@@ -21,9 +21,9 @@ def get_locations(db: Session = Depends(get_db), limit: int = 10, page: int = 1,
 
 
 # [...] create location
-# @router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.Location)
-@router.post('/', status_code=status.HTTP_201_CREATED)
-def create_location(payload: schemas.Location, db: Session = Depends(get_db)):
+@router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.LocationResponse)
+# @router.post('/', status_code=status.HTTP_201_CREATED)
+def create_location(payload: schemas.BaseLocation, db: Session = Depends(get_db)):
     print(payload)
     new_location = models.Location(**payload.dict())
     db.add(new_location)
@@ -33,8 +33,8 @@ def create_location(payload: schemas.Location, db: Session = Depends(get_db)):
 
 
 # [...] get location by id
-# @router.get('/{location_id}', response_model=schemas.Location)
-@router.get('/{location_id}')
+@router.get('/{location_id}', response_model=schemas.LocationResponse)
+# @router.get('/{location_id}')
 def get_location(location_id: str):
   get_location = db.query(models.Location).filter(models.Location.id == location_id)
   location = get_location.first()
@@ -47,8 +47,8 @@ def get_location(location_id: str):
 
 
 # [...] edit location by id
-# @router.patch('/{location_id}', response_model=schemas.Location)
-@router.patch('/{location_id}')
+@router.patch('/{location_id}', response_model=schemas.LocationResponse)
+# @router.patch('/{location_id}')
 def update_location(location_id: str, payload: schemas.Location, db: Session = Depends(get_db)):
   get_location = db.query(models.Location).filter(models.Location.id == location_id)
   location = get_location.first()
