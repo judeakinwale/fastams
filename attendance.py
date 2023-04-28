@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 # [...] attendance sign in
-@router.post('/sign-in', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponse)
+@router.post('/sign-in', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign In")
 # @router.post('/sign-in', status_code=status.HTTP_201_CREATED)
 # def create_attendance_history(payload: schemas.AttendanceHistory, file: UploadFile = File(...), db: Session = Depends(get_db)):
 def create_attendance_history(email: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
@@ -24,6 +24,7 @@ def create_attendance_history(email: str, file: UploadFile = File(...), db: Sess
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
 
+  location = None
   # # if location is required
   # location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
   # if not location:
@@ -73,7 +74,7 @@ def create_attendance_history(email: str, file: UploadFile = File(...), db: Sess
     # **payload.dict(),
     "email": email,
     "user_id": user.id,
-    "location_id": location.id,
+    "location_id": location.id if location else None,
     "image": relative_image_path, 
     "image_encoding": image_encoding_str, 
     "face_encoding": face_encoding_str, 
@@ -89,9 +90,14 @@ def create_attendance_history(email: str, file: UploadFile = File(...), db: Sess
 
 
 # [...] attendance sign out
-@router.patch('/sign-out', response_model=schemas.AttendanceHistoryResponse)
+@router.patch('/sign-out', response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign Out")
 # @router.post('/sign-out')
-def update_attendance_history(email: str, db: Session = Depends(get_db)):
+def update_attendance_history(email: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+  payload_email = email
+  user = db.query(models.User).filter(models.User.email == payload_email).first()
+  if not user:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
+  
   today = f"{date.today()}"
   tomorrow = f"{date.today() + timedelta(1)}"
   get_attendance_history = db.query(models.AttendanceHistory).filter(
@@ -105,6 +111,20 @@ def update_attendance_history(email: str, db: Session = Depends(get_db)):
   if not attendance_history:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this email: {email} found')
 
+  user_face_encoding = np.array(json.loads(user.face_encoding))
+
+  # get image and face encodings from uploaded file
+  image_encoding, face_encoding = utils.check_face_in_picture(file.file)
+  # image_encoding_str = json.dumps(image_encoding.tolist())
+  image_encoding_str = json.dumps([]) # Image encoding is not needed
+  face_encoding_str = json.dumps(face_encoding.tolist())
+
+  # check if image matches
+  image_matches = utils.check_face_match(user_face_encoding, face_encoding)
+  print(image_matches)
+  if not image_matches:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Matching face not found. Try Again.')
+
   update_data = {"is_signed_out": True}
   get_attendance_history.filter(models.AttendanceHistory.id == attendance_history.id).update(update_data, synchronize_session=False)
   db.commit()
@@ -114,22 +134,34 @@ def update_attendance_history(email: str, db: Session = Depends(get_db)):
 
 
 # [...] attendance sign in with qr code
-@router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponse)
+@router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign In with QR")
 # @router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED)
 # def create_attendance_history(payload: schemas.AttendanceHistory, file: UploadFile = File(...), db: Session = Depends(get_db)):
 def create_attendance_history(file: UploadFile = File(...), db: Session = Depends(get_db)):
+
+  # # save file to temp images folder
+  # temp_file_path = f"./temp/{file.filename}"
+  # with open(relative_image_path, "wb") as buffer:
+  #   # print(buffer)
+  #   copyfileobj(file.file, buffer)
+
+  
   # get qr code and validate content
-  qr_code_content = utils.read_qr_code(file)
+  cv_file = utils.get_opencv_img_from_buffer(file.file)
+  qr_code_content = utils.read_qr_code(cv_file, True)
+
+  # qr_code_content = utils.read_qr_code(file.file)
   print({"qr_code_content": qr_code_content})
   if not utils.validate_email(qr_code_content):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid QR Code. Try again.')
 
   # payload_email = payload.dict()["email"]
-  payload_email = qr_code_content
-  user = db.query(models.User).filter(models.User.email == payload_email).first()
+  email = qr_code_content
+  user = db.query(models.User).filter(models.User.email == email).first()
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
 
+  location = None
   # # if location is required
   # location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
   # if not location:
@@ -165,11 +197,12 @@ def create_attendance_history(file: UploadFile = File(...), db: Session = Depend
     # **payload.dict(),
     "email": email,
     "user_id": user.id,
-    "location_id": location.id,
+    "location_id": location.id if location else None,
     "qr_code": relative_image_path, 
     "qr_code_content": qr_code_content, 
     "is_signed_in": True,
   }  
+
 
   # new_attendance_history = models.AttendanceHistory(**payload.dict())
   new_attendance_history = models.AttendanceHistory(**updated_payload)
@@ -180,11 +213,14 @@ def create_attendance_history(file: UploadFile = File(...), db: Session = Depend
 
 
 # [...] attendance sign out with qr code
-@router.post('/sign-out-qr', response_model=schemas.AttendanceHistoryResponse)
+@router.post('/sign-out-qr', response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign Out with QR")
 # @router.post('/sign-out-qr')
 def update_attendance_history(file: UploadFile = File(...), db: Session = Depends(get_db)):
   # get qr code and validate content
-  qr_code_content = utils.read_qr_code(file)
+  cv_file = utils.get_opencv_img_from_buffer(file.file)
+  qr_code_content = utils.read_qr_code(cv_file, True)
+
+  # qr_code_content = utils.read_qr_code(file)
   print({"qr_code_content": qr_code_content})
   if not utils.validate_email(qr_code_content):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid QR Code. Try again.')
@@ -268,8 +304,8 @@ def update_attendance_history(attendance_history_id: str, payload: schemas.Atten
 # [...] delete attendance_history by id
 @router.delete('/{attendance_history_id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_attendance_history(attendance_history_id: str, db: Session = Depends(get_db)):
-  get_attendance_history = db.query(models.AttendanceHistory).filter(models.AttendanceHistory.id == attendance_history_id).first()
-  attendance_history = get_attendance_history
+  get_attendance_history = db.query(models.AttendanceHistory).filter(models.AttendanceHistory.id == attendance_history_id)
+  attendance_history = get_attendance_history.first()
   if not attendance_history:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this id: {id} found')
   get_attendance_history.delete(synchronize_session=False)

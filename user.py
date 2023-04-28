@@ -48,18 +48,23 @@ def create_user(
   # print({"payload": payload, "payload.dict": payload_dict})
   updated_payload = payload_dict
 
+  if not utils.validate_email(email):
+    raise HTTPException(status_code=400, detail="Invalid Email Provided")
+
   db_user = utils.get_user_by_email(payload_dict["email"], db)
   if db_user:
-      raise HTTPException(status_code=400, detail="Email already registered")
+    raise HTTPException(status_code=400, detail="Email already registered")
 
   # if payload_dict["password"]:
   # if "password" in payload_dict:
   if password:
-    # password = payload_dict.pop("password")
-    # print(payload_dict)
+    password = payload_dict.pop("password")
+    print(payload_dict)
     updated_payload = {**payload_dict, "hashed_password": utils.get_password_hash(password)}
+  else: payload_dict.pop("password")
 
   random_chars = utils.random_string(5) # for generating random strings for image and qr code
+  relative_image_path = None
   if file:
     # generate unique name for image
     file_extension = utils.get_file_extension(file.filename)
@@ -76,14 +81,15 @@ def create_user(
     image_encoding_str = json.dumps([]) # Image encoding is not needed
     face_encoding_str = json.dumps(face_encoding.tolist())
 
-    print(relative_image_path, image_encoding, face_encoding)
+    print(relative_image_path)
+    # print(relative_image_path, image_encoding, face_encoding)
 
     # update user instance with image and encodings
     updated_payload = {**updated_payload, "image": relative_image_path, "image_encoding": image_encoding_str, "face_encoding": face_encoding_str}  
 
   # generate a qr code
   user_email = updated_payload["email"]
-  user_qr_code = utils.generate_qr_code(user_email, f"./qr_code/{user_email}-{random_chars}")
+  user_qr_code = utils.generate_qr_code(user_email, f"./qr_codes/{user_email}-{random_chars}")
   updated_payload["qr_code"] = user_qr_code
   updated_payload["qr_code_content"] = user_email
 
@@ -91,7 +97,16 @@ def create_user(
   db.add(new_user)
   db.commit()
   db.refresh(new_user)
-  return {"status": "success", "data": new_user}
+
+  # generate b64 image of the qr code for display
+  encoded_image = None
+  if relative_image_path:
+    import base64
+    # Convert the image to base64 format
+    with open(user_qr_code, "rb") as f:
+      encoded_image = base64.b64encode(f.read())
+
+  return {"status": "success", "data": new_user, "b64_qr_code": encoded_image}
 
 
 # [...] get user by id
@@ -168,8 +183,8 @@ def update_user(user_id: int, file: UploadFile = File(...), db: Session = Depend
 # [...] delete user by id
 @router.delete('/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: str, db: Session = Depends(get_db)):
-  get_user = db.query(models.User).filter(models.User.id == user_id).first()
-  user = get_user
+  get_user = db.query(models.User).filter(models.User.id == user_id)
+  user = get_user.first()
   if not user:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this id: {id} found')
   get_user.delete(synchronize_session=False)

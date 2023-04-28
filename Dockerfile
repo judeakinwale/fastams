@@ -11,10 +11,10 @@ RUN pip install cmake
 
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+
 # COPY . /code/app
 COPY . /code
-
-RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 
 # CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "80"]
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80"]

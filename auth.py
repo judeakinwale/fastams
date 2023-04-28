@@ -24,6 +24,6 @@ def login(email: str, password: str, db: Session = Depends(get_db)):
 # [...] get authenticated user
 # @router.get('/me', response_model=schemas.User)
 @router.get('/me')
-def get_auth_user(current_user: User = Depends(utils.get_current_active_user)):
+def get_auth_user(current_user: models.User = Depends(utils.get_current_active_user)):
   user = current_user
   return {"status": "success", "data": user}

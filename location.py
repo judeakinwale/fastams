@@ -67,7 +67,7 @@ def update_location(location_id: str, payload: schemas.Location, db: Session = D
 @router.delete('/{location_id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_location(location_id: str, db: Session = Depends(get_db)):
   get_location = db.query(models.Location).filter(models.Location.id == location_id).first()
-  location = get_location
+  location = get_location.first()
   if not location:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location with this id: {id} found')
   get_location.delete(synchronize_session=False)

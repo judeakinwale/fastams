@@ -15,7 +15,7 @@ class User(Base):
   first_name = Column(String, nullable=False, index=True)
   last_name = Column(String, nullable=False, index=True)
   email = Column(String, nullable=False, unique=True, index=True)
-  hashed_password = Column(String, nullable=False)
+  hashed_password = Column(String, nullable=True)
   phone = Column(String, nullable=True)
   image = Column(String, nullable=True)
   image_encoding = Column(Text, nullable=True)
@@ -25,6 +25,7 @@ class User(Base):
   # location_id = Column(GUID, ForeignKey("locations.id"))
   location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
   is_active = Column(Boolean, nullable=False, default=True) # for sqlite db
+  is_admin = Column(Boolean, nullable=False, default=False) # for sqlite db
   # is_active = Column(Boolean, nullable=False, server_default='True') # for postgres db
   created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
   updated_at = Column(TIMESTAMP(timezone=True), default=None, onupdate=func.now())
@@ -57,14 +58,14 @@ class AttendanceHistory(Base):
   id = Column(Integer, primary_key=True, index=True)
   # id = Column(GUID, primary_key=True, default=GUID_DEFAULT_SQLITE) # for sqlite db
   # id = Column(GUID, primary_key=True, default=GUID_SERVER_DEFAULT_POSTGRESQL) # for postgres db
-  email = Column(String, nullable=False, unique=True, index=True)
+  email = Column(String, nullable=False, index=True)
   # user_id = Column(GUID, ForeignKey("users.id"))
   user_id = Column(Integer, ForeignKey("users.id"))
   # location_id = Column(GUID, ForeignKey("locations.id"))
   location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
-  image = Column(String, nullable=False)
-  image_encoding = Column(Text, nullable=False)
-  face_encoding = Column(Text, nullable=False)
+  image = Column(String, nullable=True)
+  image_encoding = Column(Text, nullable=True)
+  face_encoding = Column(Text, nullable=True)
   qr_code = Column(String, nullable=True)
   qr_code_content = Column(Text, nullable=True)
   is_signed_in = Column(Boolean, nullable=False, default=False) # for sqlite db

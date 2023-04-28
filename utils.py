@@ -98,6 +98,11 @@ def validate_email(email: str) -> bool:
   return False
 
 
+def get_opencv_img_from_buffer(buffer, flags = None):
+  bytes_as_np_array = np.frombuffer(buffer.read(), dtype=np.uint8)
+  return cv2.imdecode(bytes_as_np_array, flags)
+
+
 def generate_qr_code(data_str: str, file_path: str) -> str:
   import qrcode
   img = qrcode.make(data_str)
@@ -107,14 +112,18 @@ def generate_qr_code(data_str: str, file_path: str) -> str:
   return full_path
 
 
-def read_qr_code(file_path: str) -> str | None:
+def read_qr_code(file_path: str , is_opencv_img = False) -> str | None:
   try:
-    img = cv2.imread(filename)
+    print(file_path)
+    img = file_path
+    if not is_opencv_img:
+      img = cv2.imread(file_path)
+
     detect = cv2.QRCodeDetector()
     value, points, straight_qrcode = detect.detectAndDecode(img)
     return value
   except Exception() as e:
-    print(e)
+    print(f"Error reading qr code content, {e}")
     return
 
 

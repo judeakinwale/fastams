@@ -84,6 +84,7 @@ class ListUserResponse(BaseModel):
 class UserResponse(BaseModel):
   status: str
   data: User
+  b64_qr_code: str | None = None
 
 
 
