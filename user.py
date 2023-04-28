@@ -100,7 +100,7 @@ def create_user(
 
   # generate b64 image of the qr code for display
   encoded_image = None
-  if relative_image_path:
+  if user_qr_code:
     import base64
     # Convert the image to base64 format
     with open(user_qr_code, "rb") as f:
