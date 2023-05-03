@@ -9,7 +9,7 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 
-origins = ["http://localhost:3000"] # to test cors works
+origins = ["http://localhost:3000", "http://localhost:5000"] # to test cors works
 # origins = ["http://localhost:3000", "https://localhost:3000"] # for production
 
 app.add_middleware(
