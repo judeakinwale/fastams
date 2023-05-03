@@ -2,18 +2,18 @@ from pydantic import BaseSettings
 from datetime import timedelta
 
 
-class Settings(BaseSettings):
-  DATABASE_PORT: int
-  POSTGRES_PASSWORD: str
-  POSTGRES_USER: str
-  POSTGRES_DB: str
-  POSTGRES_HOST: str
-  POSTGRES_HOSTNAME: str
+# class Settings(BaseSettings):
+#   DATABASE_PORT: int
+#   POSTGRES_PASSWORD: str
+#   POSTGRES_USER: str
+#   POSTGRES_DB: str
+#   POSTGRES_HOST: str
+#   POSTGRES_HOSTNAME: str
 
-  class Config:
-    env_file = './.env'
+#   class Config:
+#     env_file = './.env'
 
-settings = Settings()
+# settings = Settings()
 
 
 class JWTSettings:
