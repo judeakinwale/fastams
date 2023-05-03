@@ -87,6 +87,11 @@ class UserResponse(BaseModel):
   b64_qr_code: str | None = None
 
 
+class UserLogin(BaseModel):
+  email: str
+  password: str
+
+
 
 class BaseLocation(BaseModel):
   name: str

@@ -13,12 +13,21 @@ router = APIRouter()
 # [...] authenticate user
 # @router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.User)
 @router.post('/', status_code=status.HTTP_201_CREATED)
-def login(email: str, password: str, db: Session = Depends(get_db)):
+def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
+  login_details = payload.dict()
+  email = login_details['email']
+  password = login_details['password']
   user = utils.authenticate_user(email, password, db)
   if not user:
     raise HTTPException(status_code=401, detail="Invalid email or password")
   token = utils.create_access_token(user)
   return {"status": "success", "data": user, "token": token}
+# def login(email: str, password: str, db: Session = Depends(get_db)):
+#   user = utils.authenticate_user(email, password, db)
+#   if not user:
+#     raise HTTPException(status_code=401, detail="Invalid email or password")
+#   token = utils.create_access_token(user)
+#   return {"status": "success", "data": user, "token": token}
 
 
 # [...] get authenticated user
