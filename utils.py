@@ -89,8 +89,7 @@ def get_file_extension(filePath: str) -> str:
 def validate_email(email: str) -> bool:
   import re
  
-  # Make a regular expression
-  # for validating an Email
+  # Make a regular expression for validating email
   regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
 
   if(re.fullmatch(regex, email)):
@@ -103,6 +102,7 @@ def get_opencv_img_from_buffer(buffer, flags = None):
   return cv2.imdecode(bytes_as_np_array, flags)
 
 
+# qr code utils
 def generate_qr_code(data_str: str, file_path: str) -> str:
   import qrcode
   img = qrcode.make(data_str)
@@ -125,6 +125,7 @@ def read_qr_code(file_path: str , is_opencv_img = False) -> str | None:
   except Exception() as e:
     print(f"Error reading qr code content, {e}")
     return
+# qr code utils
 
 
 # facial recognition utils

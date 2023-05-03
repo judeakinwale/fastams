@@ -9,13 +9,15 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 
-# origins = ["http://localhost:3000"]
+origins = ["http://localhost:3000"] # to test cors works
+# origins = ["http://localhost:3000", "https://localhost:3000"] # for production
 
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=origins,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=origins, # for production
+    # allow_origins=["*"], # for development
+    # allow_credentials=True, # Indicate that cookies should be supported for cross-origin requests. Defaults to False 
+    # # allow_origins cannot be set to ['*'] for credentials to be allowed, origins must be specified
     allow_methods=["*"],
     allow_headers=["*"],
 )
