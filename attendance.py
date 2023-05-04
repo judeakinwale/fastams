@@ -24,6 +24,12 @@ def create_attendance_history(email: str, file: UploadFile = File(...), db: Sess
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
 
+  if not user.image:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No profile image found. Contact the admin to add an image to your profile.')
+
+  if not user.face_encoding:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No face found in profile image. Contact the admin to update your profile image.')
+
   location = None
   # # if location is required
   # location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
@@ -97,6 +103,12 @@ def update_attendance_history(email: str, file: UploadFile = File(...), db: Sess
   user = db.query(models.User).filter(models.User.email == payload_email).first()
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
+
+  if not user.image:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No profile image found. Contact the admin to add an image to your profile.')
+
+  if not user.face_encoding:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No face found in profile image. Contact the admin to update your profile image.')
   
   today = f"{date.today()}"
   tomorrow = f"{date.today() + timedelta(1)}"
