@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 # COPY . /code/app
 COPY . /code
 
+# Create the necessary folders for the images
+RUN mkdir /code/attendance_images /code/attendance_qr_codes /code/qr_codes /code/training_images /code/temp
+
 # EXPOSE 80 443
 # EXPOSE 80
 
