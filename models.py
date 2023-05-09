@@ -29,6 +29,8 @@ class User(Base):
   # is_active = Column(Boolean, nullable=False, server_default='True') # for postgres db
   created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
   updated_at = Column(TIMESTAMP(timezone=True), default=None, onupdate=func.now())
+  reset_password_token = Column(String, nullable=True)
+  reset_token_expire = Column(TIMESTAMP(timezone=True), nullable=True)
 
   attendance_history = relationship("AttendanceHistory", back_populates="user")
   location = relationship("Location", back_populates="users")

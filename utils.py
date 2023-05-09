@@ -173,7 +173,7 @@ def check_face_in_picture(imagePath: str):
     face_encoding = face_recognition.face_encodings(image_encoding)[0]
     return image_encoding, face_encoding
   except:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST400, detail=f'No face found in uploaded image')
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f'No face found in uploaded image')
 
 
 def check_face_match(user_face_encoding, attendance_face_encoding):

@@ -3,6 +3,12 @@ from typing import List
 from pydantic import BaseModel
 
 
+class GenericResponse(BaseModel):
+  status: str
+  data: dict | None = None
+  message: str | None = None
+
+
 class BaseAttendanceHistory(BaseModel):
   email: str
   user_id: int
@@ -60,6 +66,11 @@ class BaseUser(BaseModel):
 class CreateUser(BaseUser):
   password: str | None = None
 
+
+class ResetPassword(BaseModel):
+  password: str
+
+
 class User(BaseUser):
   id: int | None = None
   # id: str | None = None
@@ -72,6 +83,8 @@ class User(BaseUser):
   is_active: bool = True
   created_at: datetime | None = None
   updated_at: datetime | None = None
+  reset_password_token: str | None = None
+  reset_token_expire: datetime | None = None
   attendance_history: List[AttendanceHistory] | None = []
 
 
@@ -90,6 +103,10 @@ class UserResponse(BaseModel):
 class UserLogin(BaseModel):
   email: str
   password: str
+
+
+class ResetPasswordResponse(GenericResponse):
+  data: User
 
 
 

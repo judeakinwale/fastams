@@ -49,11 +49,11 @@ def create_user(
   updated_payload = payload_dict
 
   if not utils.validate_email(email):
-    raise HTTPException(status_code=400, detail="Invalid Email Provided")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Email Provided")
 
   db_user = utils.get_user_by_email(payload_dict["email"], db)
   if db_user:
-    raise HTTPException(status_code=400, detail="Email already registered")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
   # if payload_dict["password"]:
   # if "password" in payload_dict:
@@ -133,8 +133,14 @@ def update_user(user_id: str, payload: schemas.User, db: Session = Depends(get_d
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this id: {user_id} found')
 
-  update_data = payload.dict(exclude_unset=True)
-  if update_data["password"]: update_data["hashed_password"] = utils.get_password_hash(update_data["password"])
+  # update_data = payload.dict(exclude_unset=True)
+  # if update_data["password"]: update_data["hashed_password"] = utils.get_password_hash(update_data["password"])
+
+  # if password:
+  if "password" in update_data:
+    password = update_data.pop("password")
+    print(update_data)
+    updated_payload = {**update_data, "hashed_password": utils.get_password_hash(password)}
 
   get_user.filter(models.User.id == user_id).update(update_data, synchronize_session=False)
   db.commit()
@@ -186,7 +192,7 @@ def delete_user(user_id: str, db: Session = Depends(get_db)):
   get_user = db.query(models.User).filter(models.User.id == user_id)
   user = get_user.first()
   if not user:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this id: {id} found')
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this id: {user_id} found')
   get_user.delete(synchronize_session=False)
   db.commit()
   return Response(status_code=status.HTTP_204_NO_CONTENT)
