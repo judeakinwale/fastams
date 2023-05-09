@@ -39,6 +39,27 @@ def authenticate_user(email: str, password: str, db: Session = Depends(get_db)):
     return False
   return user
 
+# //Generate and hash password token
+# User.methods.getResetPasswordToken = function () {
+#   //Generate token
+#   const resetToken = crypto.randomBytes(20).toString("hex");
+#   //Hash token and set to resetPasswordToken field
+#   this.resetPasswordToken = crypto
+#     .createHash("sha256")
+#     .update(resetToken)
+#     .digest("hex");
+
+#   //set expire
+#   this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+#   return resetToken;
+# };
+
+def generate_unique_token():
+  # if not string: string = random_string(32)
+  import uuid
+  return uuid.uuid4().hex
+
+
 
 jwt_settings = JWTSettings()
 
@@ -100,6 +121,22 @@ def validate_email(email: str) -> bool:
 def get_opencv_img_from_buffer(buffer, flags = None):
   bytes_as_np_array = np.frombuffer(buffer.read(), dtype=np.uint8)
   return cv2.imdecode(bytes_as_np_array, flags)
+
+
+def send_email():
+  import smtplib, ssl
+
+  port = 465  # For SSL
+  username = os.environ('SMTP_EMAIL')
+  password = os.environ('SMTP_PASSWORD')
+  # password = input("Type your password and press enter: ")
+
+  # Create a secure SSL context
+  context = ssl.create_default_context()
+
+  with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
+      server.login("my@gmail.com", password)
+      # TODO: Send email here
 
 
 # qr code utils
