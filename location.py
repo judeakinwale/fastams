@@ -13,7 +13,7 @@ router = APIRouter()
 # [...] get all locations
 @router.get('/', response_model=schemas.ListLocationResponse)
 # @router.get('/')
-def get_locations(db: Session = Depends(get_db), limit: int = 10, page: int = 1, search: str = ''):
+def get_locations(db: Session = Depends(get_db), limit: int = 1000000000000, page: int = 1, search: str = ''):
   skip = (page - 1) * limit
 
   locations = db.query(models.Location).filter(models.Location.name.contains(search)).limit(limit).offset(skip).all()

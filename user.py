@@ -15,7 +15,7 @@ router = APIRouter()
 # [...] get all users
 @router.get('/', response_model=schemas.ListUserResponse)
 # @router.get('/')
-def get_users(db: Session = Depends(get_db), limit: int = 10, page: int = 1, search: str = ''):
+def get_users(db: Session = Depends(get_db), limit: int = 1000000000000, page: int = 1, search: str = ''):
   skip = (page - 1) * limit
 
   users = db.query(models.User).filter(models.User.email.contains(search)).limit(limit).offset(skip).all()
