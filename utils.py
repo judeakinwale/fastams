@@ -15,6 +15,11 @@ from jose import JWTError, jwt
 from models import User
 from config import JWTSettings
 
+
+def get_app_settings(db: Session = Depends(get_db)):
+  return db.query(models.Settings).first()
+
+
 # auth utils
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

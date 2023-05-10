@@ -149,23 +149,21 @@ def update_attendance_history(email: str, file: UploadFile = File(...), db: Sess
 @router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign In with QR")
 # @router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED)
 # def create_attendance_history(payload: schemas.AttendanceHistory, file: UploadFile = File(...), db: Session = Depends(get_db)):
-def create_attendance_history(file: UploadFile = File(...), db: Session = Depends(get_db)):
-
-  # # save file to temp images folder
-  # temp_file_path = f"./temp/{file.filename}"
-  # with open(relative_image_path, "wb") as buffer:
-  #   # print(buffer)
-  #   copyfileobj(file.file, buffer)
-
+def create_attendance_history(content: str | None = None, file: UploadFile = File(None), db: Session = Depends(get_db)):
+  if not (content or file): 
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No QR Code provided. Try again.')
   
-  # get qr code and validate content
-  cv_file = utils.get_opencv_img_from_buffer(file.file)
-  qr_code_content = utils.read_qr_code(cv_file, True)
+  qr_code_content = content # default
 
-  # qr_code_content = utils.read_qr_code(file.file)
-  print({"qr_code_content": qr_code_content})
-  if not utils.validate_email(qr_code_content):
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid QR Code. Try again.')
+  if not content:
+    # get qr code and validate content
+    cv_file = utils.get_opencv_img_from_buffer(file.file)
+    qr_code_content = utils.read_qr_code(cv_file, True)
+
+    # qr_code_content = utils.read_qr_code(file.file)
+    print({"qr_code_content": qr_code_content})
+    if not utils.validate_email(qr_code_content):
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid QR Code. Try again.')
 
   # payload_email = payload.dict()["email"]
   email = qr_code_content
@@ -194,15 +192,16 @@ def create_attendance_history(file: UploadFile = File(...), db: Session = Depend
   if attendance_history:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have signed in with this email: {email}. Sign out instead')
 
-  # generate unique name for qr code image
-  random_chars = utils.random_string(2)
-  file_extension = utils.get_file_extension(file.filename)
-  relative_image_path = f"./attendance_qr_codes/{user.first_name}-{user.email}-{today}-{random_chars}{file_extension}"
+  if not content:
+    # generate unique name for qr code image
+    random_chars = utils.random_string(2)
+    file_extension = utils.get_file_extension(file.filename)
+    relative_image_path = f"./attendance_qr_codes/{user.first_name}-{user.email}-{today}-{random_chars}{file_extension}"
 
-  # save file to attendance images folder
-  with open(relative_image_path, "wb") as buffer:
-    # print(buffer)
-    copyfileobj(file.file, buffer)
+    # save file to attendance images folder
+    with open(relative_image_path, "wb") as buffer:
+      # print(buffer)
+      copyfileobj(file.file, buffer)
 
   # update user instance with image and encodings
   updated_payload = {
@@ -210,7 +209,7 @@ def create_attendance_history(file: UploadFile = File(...), db: Session = Depend
     "email": email,
     "user_id": user.id,
     "location_id": location.id if location else None,
-    "qr_code": relative_image_path, 
+    "qr_code": relative_image_path if not content else None, 
     "qr_code_content": qr_code_content, 
     "is_signed_in": True,
   }  
@@ -227,15 +226,21 @@ def create_attendance_history(file: UploadFile = File(...), db: Session = Depend
 # [...] attendance sign out with qr code
 @router.post('/sign-out-qr', response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign Out with QR")
 # @router.post('/sign-out-qr')
-def update_attendance_history(file: UploadFile = File(...), db: Session = Depends(get_db)):
-  # get qr code and validate content
-  cv_file = utils.get_opencv_img_from_buffer(file.file)
-  qr_code_content = utils.read_qr_code(cv_file, True)
+def update_attendance_history(content: str | None = None, file: UploadFile = File(None), db: Session = Depends(get_db)):
+  if not (content or file): 
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No QR Code provided. Try again.')
 
-  # qr_code_content = utils.read_qr_code(file)
-  print({"qr_code_content": qr_code_content})
-  if not utils.validate_email(qr_code_content):
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid QR Code. Try again.')
+  qr_code_content = content # default
+
+  if not content:
+    # get qr code and validate content
+    cv_file = utils.get_opencv_img_from_buffer(file.file)
+    qr_code_content = utils.read_qr_code(cv_file, True)
+
+    # qr_code_content = utils.read_qr_code(file)
+    print({"qr_code_content": qr_code_content})
+    if not utils.validate_email(qr_code_content):
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid QR Code. Try again.')
 
   email = qr_code_content
 

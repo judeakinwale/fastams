@@ -22,6 +22,7 @@ class User(Base):
   face_encoding = Column(Text, nullable=True)
   qr_code = Column(String, nullable=True)
   qr_code_content = Column(Text, nullable=True)
+  qr_code_b64 = Column(Text, nullable=True)
   # location_id = Column(GUID, ForeignKey("locations.id"))
   location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
   is_active = Column(Boolean, nullable=False, default=True) # for sqlite db
@@ -70,6 +71,7 @@ class AttendanceHistory(Base):
   face_encoding = Column(Text, nullable=True)
   qr_code = Column(String, nullable=True)
   qr_code_content = Column(Text, nullable=True)
+  qr_code_b64 = Column(Text, nullable=True)
   is_signed_in = Column(Boolean, nullable=False, default=False) # for sqlite db
   is_signed_out = Column(Boolean, nullable=False, default=False) # for sqlite db
   is_active = Column(Boolean, nullable=False, default=True) # for sqlite db
@@ -81,3 +83,18 @@ class AttendanceHistory(Base):
 
   user = relationship("User", back_populates="attendance_history")
   location = relationship("Location", back_populates="attendance_history")
+
+
+class Settings(Base):
+  __tablename__ = 'settings'
+  id = Column(Integer, primary_key=True, index=True)
+  # id = Column(GUID, primary_key=True, index=True, default=GUID_DEFAULT_SQLITE) # for sqlite db
+  # id = Column(GUID, primary_key=True, default=GUID_SERVER_DEFAULT_POSTGRESQL) # for postgres db
+  use_facial_recognition = Column(Boolean, nullable=False, default=True) # for sqlite db
+  use_qr_code = Column(Boolean, nullable=False, default=True) # for sqlite db
+  use_location = Column(Boolean, nullable=False, default=False) # for sqlite db
+  is_active = Column(Boolean, nullable=False, default=True) # for sqlite db
+  # is_active = Column(Boolean, nullable=False, server_default='True') # for postgres db
+  created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+  updated_at = Column(TIMESTAMP(timezone=True), default=None, onupdate=func.now())
+

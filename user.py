@@ -90,13 +90,6 @@ def create_user(
   # generate a qr code
   user_email = updated_payload["email"]
   user_qr_code = utils.generate_qr_code(user_email, f"./qr_codes/{user_email}-{random_chars}")
-  updated_payload["qr_code"] = user_qr_code
-  updated_payload["qr_code_content"] = user_email
-
-  new_user = models.User(**updated_payload)
-  db.add(new_user)
-  db.commit()
-  db.refresh(new_user)
 
   # generate b64 image of the qr code for display
   encoded_image = None
@@ -105,6 +98,15 @@ def create_user(
     # Convert the image to base64 format
     with open(user_qr_code, "rb") as f:
       encoded_image = base64.b64encode(f.read())
+
+  updated_payload["qr_code"] = user_qr_code
+  updated_payload["qr_code_content"] = user_email
+  updated_payload["qr_code_b64"] = encoded_image
+
+  new_user = models.User(**updated_payload)
+  db.add(new_user)
+  db.commit()
+  db.refresh(new_user)
 
   return {"status": "success", "data": new_user, "b64_qr_code": encoded_image}
 

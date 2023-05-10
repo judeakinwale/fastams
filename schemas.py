@@ -80,6 +80,7 @@ class User(BaseUser):
   face_encoding: str | None = None
   qr_code: str | None = None
   qr_code_content: str | None = None
+  qr_code_b64: str | None = None
   is_active: bool = True
   created_at: datetime | None = None
   updated_at: datetime | None = None
@@ -142,3 +143,22 @@ class ListLocationResponse(BaseModel):
 class LocationResponse(BaseModel):
   status: str
   data: Location
+
+
+
+class Settings(BaseModel):
+  use_facial_recognition: bool = True
+  use_qr_code: bool = True
+  use_location: bool = False
+  is_active: bool = True
+
+  class Config:
+    orm_mode = True
+    allow_population_by_field_name = True
+    arbitrary_types_allowed = True
+
+
+class SettingsResponse(BaseModel):
+  status: str
+  data: Settings
+  message: str | None = None
