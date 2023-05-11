@@ -44,12 +44,24 @@ def forgot_password(email: str, db: Session = Depends(get_db)):
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found') # change the message
 
-  update_data['reset_password_token'] = utils.generate_unique_token()
-  update_data['reset_token_expire'] = datetime.now() + timedelta(hours=1)
+  update_data = {
+    'reset_password_token': utils.generate_unique_token(),
+    'reset_token_expire': datetime.now() + timedelta(hours=1),
+  }
 
   get_user.filter(models.User.email == email).update(update_data, synchronize_session=False)
   db.commit()
   db.refresh(user)
+
+  url = "https://pyams.azurewebsites.net/"
+  reciepients = [email]
+  subject = f"Forgot Password"
+  message = f"""
+  <p>Hello {user.first_name},</p>
+  <br>
+  <p>You have requested to reset your password. If you didn't make this request kindly ignore.</p>
+  <p>Kindly reset your password at this <a href='{url}'>link</a>.</p>"""
+  utils.send_email(reciepients, subject, message)
 
   # TODO: send email to user with link to reset password
   return {"status": "success", "data": user}

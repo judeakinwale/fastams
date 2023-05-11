@@ -128,20 +128,103 @@ def get_opencv_img_from_buffer(buffer, flags = None):
   return cv2.imdecode(bytes_as_np_array, flags)
 
 
-def send_email():
-  import smtplib, ssl
+# def send_email():
+#   import smtplib, ssl
 
-  port = 465  # For SSL
-  username = os.environ('SMTP_EMAIL')
-  password = os.environ('SMTP_PASSWORD')
-  # password = input("Type your password and press enter: ")
+#   # port = 465  # For SSL
+#   username = os.environ('SMTP_EMAIL') or 'Bizsupport@lotusbetaanalytics.com'
+#   password = os.environ('SMTP_PASSWORD')
+#   host = os.environ('SMTP_HOST') or 'smtp.office365.com'
+#   port = os.environ('SMTP_PORT') or 587
 
-  # Create a secure SSL context
-  context = ssl.create_default_context()
+#   # password = input("Type your password and press enter: ")
 
-  with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
-      server.login("my@gmail.com", password)
-      # TODO: Send email here
+#   # Create a secure SSL context
+#   context = ssl.create_default_context()
+
+#   with smtplib.SMTP_SSL(host, port, context=context) as server:
+#       server.login(username, password)
+#       # TODO: Send email here
+
+
+def send_email(reciepients, subject, message, image_path = None, image_name = '', cc = []):
+  import smtplib
+  from email.mime.text import MIMEText
+  from email.mime.image import MIMEImage
+  from email.mime.multipart import MIMEMultipart
+  
+  email = os.environ['SMTP_EMAIL'] or 'Bizsupport@lotusbetaanalytics.com'
+  password = os.environ['SMTP_PASSWORD']
+  host = os.environ['SMTP_HOST'] or 'smtp.office365.com'
+  port = os.environ['SMTP_PORT'] or 587
+
+  # Create a MIME multipart message
+  msg = MIMEMultipart()
+  msg['From'] = email
+  msg['To'] = ', '.join(reciepients)
+  msg['Cc'] = ', '.join(cc)
+  msg['Subject'] = subject
+
+  # Attach the message to the MIME message
+  msg.attach(MIMEText(message, 'html'))
+  # msg.attach(MIMEText(message, 'plain'))
+
+  # Attach the image
+  if image_path:
+    with open(image_path, 'rb') as f:
+      img_data = f.read()
+      image = MIMEImage(img_data, name=f'{image_name if image_name else "image"}.png')
+      msg.attach(image)
+
+  # Connect to the SMTP server 
+  server = smtplib.SMTP(host, port)
+  server.starttls()
+
+  # Login to your account
+  server.login(email, password)
+
+  all_reciepients = reciepients + cc
+
+  # Send the email
+  server.sendmail(email, all_reciepients, msg.as_string())
+
+  # Close the connection
+  server.quit()
+
+
+
+# # Provide the necessary information
+# email = 'your_email@gmail.com'
+# password = 'your_password'
+# reciepients = 'recipient_email@example.com'
+# subject = 'Hello from Python!'
+# message = 'This is a test email sent using Python.'
+
+# # Call the function to send the email
+# send_email(email, password, reciepients, subject, message)
+
+
+# def send_mail(options):
+#   import smtplib
+
+#   message = """From: From Person <from@fromdomain.com>
+#   To: To Person <to@todomain.com>
+#   MIME-Version: 1.0
+#   Content-type: text/html
+#   Subject: SMTP HTML e-mail test
+
+#   This is an e-mail message to be sent in HTML format
+
+#   <b>This is HTML message.</b>
+#   <h1>This is headline.</h1>
+#   """
+
+#   try:
+#     smtpObj = smtplib.SMTP('localhost')
+#     smtpObj.sendmail(sender, receivers, message)         
+#     print("Successfully sent email")
+#   except SMTPException:
+#     print("Error: unable to send email")
 
 
 # qr code utils

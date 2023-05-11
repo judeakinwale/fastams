@@ -108,6 +108,13 @@ def create_user(
   db.commit()
   db.refresh(new_user)
 
+  reciepients = [user_email]
+  subject = f"Hello {updated_payload['first_name']}"
+  message = f"Kindly find your attendance QR Code attached"
+  image_path = user_qr_code
+  image_name = "QR Code"
+  utils.send_email(reciepients, subject, message, image_path)
+
   return {"status": "success", "data": new_user, "b64_qr_code": encoded_image}
 
 
