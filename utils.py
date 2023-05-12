@@ -17,7 +17,10 @@ from config import JWTSettings
 
 
 def get_app_settings(db: Session = Depends(get_db)):
-  return db.query(models.Settings).first()
+  settings = db.query(models.Settings).first()
+  if not settings:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Settings not found. Setup the site settings first!')
+  return settings
 
 
 def is_location_used(db: Session = Depends(get_db)):
