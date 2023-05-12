@@ -116,6 +116,9 @@ class BaseLocation(BaseModel):
   address: str
   description: str | None = None
   phone: str | None = None
+  longitude: float | None = None
+  latitude: float | None = None
+  radius: float | None = None
   is_active: bool = True
 
   class Config:

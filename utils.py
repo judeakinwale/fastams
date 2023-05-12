@@ -20,6 +20,10 @@ def get_app_settings(db: Session = Depends(get_db)):
   return db.query(models.Settings).first()
 
 
+def is_location_used(db: Session = Depends(get_db)):
+  return get_app_settings(db).use_location
+
+
 # auth utils
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -271,3 +275,17 @@ def check_face_match(user_face_encoding, attendance_face_encoding):
     return True
   return False
 # facial recognition utils
+
+
+# location utils
+def check_matching_location(location, long, lat, rad = 0.0005):
+  if not (location.longitude and location.latitude): return True
+
+  long_diff = abs(float(location.longitude) - float(long))
+  lat_diff = abs(float(location.latitude) - float(lat))
+  location_rad = float(location.radius) if location.radius else rad
+
+  if long_diff < rad and lat_diff < location_rad:
+    return True
+  return False
+# location utils

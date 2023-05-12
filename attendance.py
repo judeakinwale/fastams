@@ -17,7 +17,7 @@ router = APIRouter()
 @router.post('/sign-in', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign In")
 # @router.post('/sign-in', status_code=status.HTTP_201_CREATED)
 # def create_attendance_history(payload: schemas.AttendanceHistory, file: UploadFile = File(...), db: Session = Depends(get_db)):
-def create_attendance_history(email: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+def create_attendance_history(email: str, file: UploadFile = File(...), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
   # payload_email = payload.dict()["email"]
   payload_email = email
   user = db.query(models.User).filter(models.User.email == payload_email).first()
@@ -30,11 +30,6 @@ def create_attendance_history(email: str, file: UploadFile = File(...), db: Sess
   if not user.face_encoding:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No face found in profile image. Contact the admin to update your profile image.')
 
-  location = None
-  # # if location is required
-  # location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
-  # if not location:
-  #   raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
 
   # check user has recently (today) signed in and not signed out yet
   today = f"{date.today()}"
@@ -51,6 +46,23 @@ def create_attendance_history(email: str, file: UploadFile = File(...), db: Sess
   if attendance_history:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have signed in with this email: {email}. Sign out instead')
 
+  # check location
+  location = None
+  use_location = utils.is_location_used(db)
+  if use_location:
+    location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
+    if not location:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
+
+    if not (long or lat):
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
+    
+    is_location_match = utils.check_matching_location(location, float(long), float(lat))
+    if not is_location_match:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You are not allowed to signin from this location')
+
+  # check face using facial recognition
+  # get saved face encoding
   user_face_encoding = np.array(json.loads(user.face_encoding))
 
   # get image and face encodings from uploaded file
@@ -98,7 +110,7 @@ def create_attendance_history(email: str, file: UploadFile = File(...), db: Sess
 # [...] attendance sign out
 @router.patch('/sign-out', response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign Out")
 # @router.post('/sign-out')
-def update_attendance_history(email: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+def update_attendance_history(email: str, file: UploadFile = File(...), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
   payload_email = email
   user = db.query(models.User).filter(models.User.email == payload_email).first()
   if not user:
@@ -121,8 +133,29 @@ def update_attendance_history(email: str, file: UploadFile = File(...), db: Sess
   attendance_history = get_attendance_history.first()
 
   if not attendance_history:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have not signed in with this email: {email}. Sign in instead')
+
+  # check location
+  location = None
+  use_location = utils.is_location_used(db)
+  if use_location:
+    location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
+    if not location:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
+
+    if not (long or lat):
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
+    
+    is_location_match = utils.check_matching_location(location, float(long), float(lat))
+    if not is_location_match:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You are not allowed to signin from this location')
+
+  if not attendance_history:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this email: {email} found')
 
+
+  # check face using facial recognition
+  # get saved face encoding
   user_face_encoding = np.array(json.loads(user.face_encoding))
 
   # get image and face encodings from uploaded file
@@ -149,7 +182,7 @@ def update_attendance_history(email: str, file: UploadFile = File(...), db: Sess
 @router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign In with QR")
 # @router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED)
 # def create_attendance_history(payload: schemas.AttendanceHistory, file: UploadFile = File(...), db: Session = Depends(get_db)):
-def create_attendance_history(content: str | None = None, file: UploadFile = File(None), db: Session = Depends(get_db)):
+def create_attendance_history(content: str | None = None, file: UploadFile = File(None), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
   if not (content or file): 
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No QR Code provided. Try again.')
   
@@ -171,11 +204,11 @@ def create_attendance_history(content: str | None = None, file: UploadFile = Fil
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
 
-  location = None
-  # # if location is required
-  # location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
-  # if not location:
-  #   raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
+  # location = None
+  # # # if location is required
+  # # location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
+  # # if not location:
+  # #   raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
 
   # check user has recently (today) signed in and not signed out yet
   today = f"{date.today()}"
@@ -192,6 +225,23 @@ def create_attendance_history(content: str | None = None, file: UploadFile = Fil
   if attendance_history:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have signed in with this email: {email}. Sign out instead')
 
+  # check location
+  location = None
+  use_location = utils.is_location_used(db)
+  if use_location:
+    location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
+    if not location:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
+
+    if not (long or lat):
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
+    
+    is_location_match = utils.check_matching_location(location, float(long), float(lat))
+    if not is_location_match:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You are not allowed to signin from this location')
+
+
+  # save qr code to storage
   if not content:
     # generate unique name for qr code image
     random_chars = utils.random_string(2)
@@ -226,7 +276,7 @@ def create_attendance_history(content: str | None = None, file: UploadFile = Fil
 # [...] attendance sign out with qr code
 @router.post('/sign-out-qr', response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign Out with QR")
 # @router.post('/sign-out-qr')
-def update_attendance_history(content: str | None = None, file: UploadFile = File(None), db: Session = Depends(get_db)):
+def update_attendance_history(content: str | None = None, file: UploadFile = File(None), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
   if not (content or file): 
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No QR Code provided. Try again.')
 
@@ -243,6 +293,9 @@ def update_attendance_history(content: str | None = None, file: UploadFile = Fil
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid QR Code. Try again.')
 
   email = qr_code_content
+  user = db.query(models.User).filter(models.User.email == email).first()
+  if not user:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
 
   # check user has recently (today) signed in and not signed out yet
   today = f"{date.today()}"
@@ -257,6 +310,25 @@ def update_attendance_history(content: str | None = None, file: UploadFile = Fil
 
   if not attendance_history:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this email: {email} found')
+
+  # check location
+  location = None
+  use_location = utils.is_location_used(db)
+  if use_location:
+    location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
+    if not location:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
+
+    if not (long or lat):
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
+    
+    is_location_match = utils.check_matching_location(location, float(long), float(lat))
+    if not is_location_match:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You are not allowed to signin from this location')
+
+  if not attendance_history:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this email: {email} found')
+
 
   update_data = {"is_signed_out": True}
   get_attendance_history.filter(models.AttendanceHistory.id == attendance_history.id).update(update_data, synchronize_session=False)

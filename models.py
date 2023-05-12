@@ -1,7 +1,7 @@
 # from ..config.database import Base
 from sqlite_database import Base # for sqlite db
 # from database import Base # for postgres db
-from sqlalchemy import TIMESTAMP, Column, ForeignKey, String, Boolean, Integer, Text
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, String, Boolean, Integer, Text, Float
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from fastapi_utils.guid_type import GUID, GUID_SERVER_DEFAULT_POSTGRESQL, GUID_DEFAULT_SQLITE
@@ -46,6 +46,9 @@ class Location(Base):
   address = Column(String, nullable=False, index=True)
   description = Column(String, nullable=True)
   phone = Column(String, nullable=True)
+  longitude = Column(Float, nullable=True)
+  latitude = Column(Float, nullable=True)
+  radius = Column(Float, nullable=True)
   is_active = Column(Boolean, nullable=False, default=True) # for sqlite db
   # is_active = Column(Boolean, nullable=False, server_default='True') # for postgres db
   created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())

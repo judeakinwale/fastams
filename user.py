@@ -109,8 +109,12 @@ def create_user(
   db.refresh(new_user)
 
   reciepients = [user_email]
-  subject = f"Hello {updated_payload['first_name']}"
-  message = f"Kindly find your attendance QR Code attached"
+  subject = f"Attendance QR Code"
+  message = f"""
+  <p>Hello {new_user.first_name},</p>
+  <br>
+  <p>Kindly find your attendance QR Code attached.</p>
+  """
   image_path = user_qr_code
   image_name = "QR Code"
   utils.send_email(reciepients, subject, message, image_path)
