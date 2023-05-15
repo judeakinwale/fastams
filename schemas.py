@@ -56,6 +56,8 @@ class BaseUser(BaseModel):
   email: str
   image: str | None = None
   location_id: int | None = None
+  is_admin: bool = False
+  is_active: bool = True
 
   class Config:
     orm_mode = True
@@ -81,7 +83,6 @@ class User(BaseUser):
   qr_code: str | None = None
   qr_code_content: str | None = None
   qr_code_b64: str | None = None
-  is_active: bool = True
   created_at: datetime | None = None
   updated_at: datetime | None = None
   reset_password_token: str | None = None
