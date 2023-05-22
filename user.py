@@ -12,71 +12,25 @@ import json
 router = APIRouter()
 
 
-# [...] get all users
-@router.get('/', response_model=schemas.ListUserResponse)
-# @router.get('/')
-def get_users(db: Session = Depends(get_db), limit: int = 1000000000000, page: int = 1, search: str = ''):
-  skip = (page - 1) * limit
+# [...] generic functiongit  for creating users
+def user_factory(payload: schemas.User, db: Session = Depends(get_db)):
+  console.log({"payload": payload})
 
-  users = db.query(models.User).filter(models.User.email.contains(search)).limit(limit).offset(skip).all()
-  return {'status': 'success', 'count': len(users), 'data': users}
-
-
-# [...] create user
-@router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.UserResponse)
-# @router.post('/', status_code=status.HTTP_201_CREATED)
-def create_user(
-  first_name: str = Form(...), 
-  last_name: str = Form(...),
-  email: str = Form(...),
-  password: str | None = Form(None),
-  location_id: str | None = Form(None),
-  is_admin: str | None = Form(None),
-  file: UploadFile | None = File(None), 
-  db: Session = Depends(get_db),
-  # current_user: models.User | None = Depends(utils.get_current_active_user) or None,
-  current_user: models.User | None = Depends(utils.try_get_current_active_user),
-  # _ = Depends(utils.security),
-):
-# def create_user(payload: schemas.CreateUser = Depends(), file: UploadFile | None = None, db: Session = Depends(get_db)):
-# def create_user(payload: schemas.CreateUser, file: UploadFile | None = File(...), db: Session = Depends(get_db)):
-  payload_dict = {
-    "first_name": first_name,
-    "last_name": last_name,
-    "email": email,
-    "location_id": location_id,
-    "password": password,
-  } # convert payload to dictionary
-  print({"payload.dict": payload_dict})
-  # payload_dict = payload.dict() # convert payload to dictionary
-  # print({"payload": payload, "payload.dict": payload_dict})
-  updated_payload = payload_dict
-
-  if not utils.validate_email(email):
+  if not utils.validate_email(payload.email):
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Email Provided")
 
-  db_user = utils.get_user_by_email(payload_dict["email"], db)
+  db_user = utils.get_user_by_email(payload["email"], db)
   if db_user:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
   if not current_user:
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You're not authorized to create admin")
 
-  # if is_admin:
-  #   try: 
-  #     current_user = utils.get_current_active_user(utils.security, db)
-  #     print({"current_user": current_user})
-  #   except HTTPException as e: 
-  #     # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You're not authorized to create admin")
-  #     raise e
-      
-  # if payload_dict["password"]:
-  # if "password" in payload_dict:
   if password:
-    password = payload_dict.pop("password")
-    print(payload_dict)
-    updated_payload = {**payload_dict, "hashed_password": utils.get_password_hash(password)}
-  else: payload_dict.pop("password")
+    password = payload.pop("password")
+    print(payload)
+    updated_payload = {**payload, "hashed_password": utils.get_password_hash(password)}
+  else: payload.pop("password")
 
   random_chars = utils.random_string(5) # for generating random strings for image and qr code
   relative_image_path = None
@@ -135,6 +89,126 @@ def create_user(
   utils.send_email(reciepients, subject, message, image_path)
 
   return {"status": "success", "data": new_user, "b64_qr_code": encoded_image}
+
+
+# [...] get all users
+@router.get('/', response_model=schemas.ListUserResponse)
+# @router.get('/')
+def get_users(db: Session = Depends(get_db), limit: int = 1000000000000, page: int = 1, search: str = ''):
+  skip = (page - 1) * limit
+
+  users = db.query(models.User).filter(models.User.email.contains(search)).limit(limit).offset(skip).all()
+  return {'status': 'success', 'count': len(users), 'data': users}
+
+
+# [...] create user
+@router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.UserResponse)
+# @router.post('/', status_code=status.HTTP_201_CREATED)
+def create_user(
+  first_name: str = Form(...), 
+  last_name: str = Form(...),
+  email: str = Form(...),
+  password: str | None = Form(None),
+  location_id: str | None = Form(None),
+  is_admin: str | None = Form(None),
+  file: UploadFile | None = File(None), 
+  db: Session = Depends(get_db),
+):
+  payload_dict = {
+    "first_name": first_name,
+    "last_name": last_name,
+    "email": email,
+    "location_id": location_id,
+    "password": password,
+  } # convert payload to dictionary
+  print({"payload.dict": payload_dict})
+  # payload_dict = payload.dict() # convert payload to dictionary
+  # print({"payload": payload, "payload.dict": payload_dict})
+  updated_payload = payload_dict
+
+  # if not utils.validate_email(email):
+  #   raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Email Provided")
+
+  # db_user = utils.get_user_by_email(payload_dict["email"], db)
+  # if db_user:
+  #   raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+
+  # if not current_user:
+  #   raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You're not authorized to create admin")
+
+  # # if is_admin:
+  # #   try: 
+  # #     current_user = utils.get_current_active_user(utils.security, db)
+  # #     print({"current_user": current_user})
+  # #   except HTTPException as e: 
+  # #     # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You're not authorized to create admin")
+  # #     raise e
+      
+  # # if payload_dict["password"]:
+  # # if "password" in payload_dict:
+  # if password:
+  #   password = payload_dict.pop("password")
+  #   print(payload_dict)
+  #   updated_payload = {**payload_dict, "hashed_password": utils.get_password_hash(password)}
+  # else: payload_dict.pop("password")
+
+  # random_chars = utils.random_string(5) # for generating random strings for image and qr code
+  # relative_image_path = None
+  # if file:
+  #   # generate unique name for image
+  #   file_extension = utils.get_file_extension(file.filename)
+  #   relative_image_path = f"./training_images/{first_name}-{email}-{random_chars}{file_extension}"
+
+  #   # save file to training images folder
+  #   with open(relative_image_path, "wb") as buffer:
+  #     # print(buffer)
+  #     copyfileobj(file.file, buffer)
+
+  #   # get image and face encodings from uploaded file
+  #   image_encoding, face_encoding = utils.check_face_in_picture(file.file)
+  #   # image_encoding_str = json.dumps(image_encoding.tolist())
+  #   image_encoding_str = json.dumps([]) # Image encoding is not needed
+  #   face_encoding_str = json.dumps(face_encoding.tolist())
+
+  #   print(relative_image_path)
+  #   # print(relative_image_path, image_encoding, face_encoding)
+
+  #   # update user instance with image and encodings
+  #   updated_payload = {**updated_payload, "image": relative_image_path, "image_encoding": image_encoding_str, "face_encoding": face_encoding_str}  
+
+  # # generate a qr code
+  # user_email = updated_payload["email"]
+  # user_qr_code = utils.generate_qr_code(user_email, f"./qr_codes/{user_email}-{random_chars}")
+
+  # # generate b64 image of the qr code for display
+  # encoded_image = None
+  # if user_qr_code:
+  #   import base64
+  #   # Convert the image to base64 format
+  #   with open(user_qr_code, "rb") as f:
+  #     encoded_image = base64.b64encode(f.read())
+
+  # updated_payload["qr_code"] = user_qr_code
+  # updated_payload["qr_code_content"] = user_email
+  # updated_payload["qr_code_b64"] = encoded_image
+
+  # new_user = models.User(**updated_payload)
+  # db.add(new_user)
+  # db.commit()
+  # db.refresh(new_user)
+
+  # reciepients = [user_email]
+  # subject = f"Attendance QR Code"
+  # message = f"""
+  # <p>Hello {new_user.first_name},</p>
+  # <br>
+  # <p>Kindly find your attendance QR Code attached.</p>
+  # """
+  # image_path = user_qr_code
+  # image_name = "QR Code"
+  # utils.send_email(reciepients, subject, message, image_path)
+
+  # return {"status": "success", "data": new_user, "b64_qr_code": encoded_image}
 
 
 # [...] create admin user
