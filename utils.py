@@ -1,6 +1,7 @@
 import os
-from fastapi import Depends, HTTPException, status, APIRouter, Response, UploadFile, File
-from fastapi.security import OAuth2PasswordBearer
+from typing import Annotated
+from fastapi import Depends, HTTPException, status, APIRouter, Response, Request, UploadFile, File
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlite_database import get_db, Base # for sqlite db
 # from database import get_db, Base # for postgres db
@@ -83,21 +84,83 @@ def create_access_token(user: User):
     return encoded_jwt
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+security = HTTPBearer()
 
-def get_current_active_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+
+def decode_token_id(request: Request):
+  auth = request.headers.get("Authentication")
+  token = auth.split(" ")[1]
+  print({"auth": auth, "token": token})
+  payload = jwt.decode(token, jwt_settings.secret_key, algorithms=[jwt_settings.algorithm])
+  print({"token": token, "payload": payload})
+  user_id = payload.get("id")
+  if user_id is None:
+    raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+  # token_data = TokenData(user_id=user_id)
+
+
+def get_current_active_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+  try:      
+    token = credentials.credentials
+    payload = jwt.decode(token, jwt_settings.secret_key, algorithms=[jwt_settings.algorithm])
+    print({"token": token, "payload": payload})
+    user_id = payload.get("id")
+    if user_id is None:
+      raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+    # token_data = TokenData(user_id=user_id)
+  except JWTError:
+    raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+  except AttributeError:
+    # if credentials.credentials doesnt exist
+    raise HTTPException(status_code=401, detail="Invalid authentication credentials...")
+
+  user = db.query(models.User).filter(models.User.id == user_id).first()
+  if user is None:
+    raise HTTPException(status_code=404, detail="User not found")
+  return user
+
+
+def try_get_current_active_user(credentials: HTTPAuthorizationCredentials | None = Depends(security), db: Session = Depends(get_db)):
+  print(credentials.credentials)
+  try:      
+    token = credentials.credentials
+    payload = jwt.decode(token, jwt_settings.secret_key, algorithms=[jwt_settings.algorithm])
+    print({"token": token, "payload": payload})
+    user_id = payload.get("id")
+    if user_id is None:
+      return None
+    # token_data = TokenData(user_id=user_id)
+  except JWTError:
+    return None
+  except AttributeError:
+    # if credentials.credentials doesnt exist
+    return None
+
+  user = db.query(models.User).filter(models.User.id == user_id).first()
+  if user is None:
+    return None
+  return user
+
+
+# def get_current_oauth2_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_oauth2_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
     try:
+        print({"token": token, "oauth2_scheme": oauth2_scheme})
         payload = jwt.decode(token, jwt_settings.secret_key, algorithms=[jwt_settings.algorithm])
         user_id = payload.get("id")
+        print({"user_id": user_id, "payload": payload})
+
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid authentication credentials")
         # token_data = TokenData(user_id=user_id)
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
-    user = db.query(models.User).filter(models.User.id == user_id)
+    user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
+    print({"user": user})
 
     return user
 

@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 # [...] attendance sign in
-@router.post('/sign-in', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign In")
+@router.post('/sign-in', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign In")
 # @router.post('/sign-in', status_code=status.HTTP_201_CREATED)
 # def create_attendance_history(payload: schemas.AttendanceHistory, file: UploadFile = File(...), db: Session = Depends(get_db)):
 def create_attendance_history(email: str, file: UploadFile = File(...), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
@@ -108,7 +108,7 @@ def create_attendance_history(email: str, file: UploadFile = File(...), long: st
 
 
 # [...] attendance sign out
-@router.patch('/sign-out', response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign Out")
+@router.patch('/sign-out', response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign Out")
 # @router.post('/sign-out')
 def update_attendance_history(email: str, file: UploadFile = File(...), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
   payload_email = email
@@ -179,7 +179,7 @@ def update_attendance_history(email: str, file: UploadFile = File(...), long: st
 
 
 # [...] attendance sign in with qr code
-@router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign In with QR")
+@router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign In with QR")
 # @router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED)
 # def create_attendance_history(payload: schemas.AttendanceHistory, file: UploadFile = File(...), db: Session = Depends(get_db)):
 def create_attendance_history(content: str | None = None, file: UploadFile = File(None), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
@@ -274,7 +274,7 @@ def create_attendance_history(content: str | None = None, file: UploadFile = Fil
 
 
 # [...] attendance sign out with qr code
-@router.post('/sign-out-qr', response_model=schemas.AttendanceHistoryResponse, summary="Attendance Sign Out with QR")
+@router.post('/sign-out-qr', response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign Out with QR")
 # @router.post('/sign-out-qr')
 def update_attendance_history(content: str | None = None, file: UploadFile = File(None), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
   if not (content or file): 
@@ -349,7 +349,7 @@ def get_attendance_history(db: Session = Depends(get_db), limit: int = 100000000
 
 
 # [...] create attendance_history
-@router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponse)
+@router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponseWithUser)
 # @router.post('/', status_code=status.HTTP_201_CREATED)
 def create_attendance_history(payload: schemas.BaseAttendanceHistory, db: Session = Depends(get_db)):
     new_attendance_history = models.AttendanceHistory(**payload.dict())
@@ -360,9 +360,9 @@ def create_attendance_history(payload: schemas.BaseAttendanceHistory, db: Sessio
 
 
 # [...] get attendance_history by id
-@router.get('/{attendance_history_id}', response_model=schemas.AttendanceHistoryResponse)
+@router.get('/{attendance_history_id}', response_model=schemas.AttendanceHistoryResponseWithUser)
 # @router.get('/{attendance_history_id}')
-def get_attendance_history(attendance_history_id: str):
+def get_attendance_history(attendance_history_id: str, db: Session = Depends(get_db)):
   get_attendance_history = db.query(models.AttendanceHistory).filter(models.AttendanceHistory.id == attendance_history_id)
   attendance_history = get_attendance_history.first()
 
@@ -374,7 +374,7 @@ def get_attendance_history(attendance_history_id: str):
 
 
 # [...] edit attendance_history by id
-@router.patch('/{attendance_history_id}', response_model=schemas.AttendanceHistoryResponse)
+@router.patch('/{attendance_history_id}', response_model=schemas.AttendanceHistoryResponseWithUser)
 # @router.patch('/{attendance_history_id}')
 def update_attendance_history(attendance_history_id: str, payload: schemas.AttendanceHistory, db: Session = Depends(get_db)):
   get_attendance_history = db.query(models.AttendanceHistory).filter(models.AttendanceHistory.id == attendance_history_id)

@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List
 from pydantic import BaseModel
+from json import dumps
 
 
 class GenericResponse(BaseModel):
@@ -67,6 +68,11 @@ class BaseUser(BaseModel):
 
 class CreateUser(BaseUser):
   password: str | None = None
+
+class UpdateUser(CreateUser):
+  first_name: str | None = None
+  last_name: str | None = None
+  email: str | None = None
 
 
 class ResetPassword(BaseModel):
@@ -154,6 +160,9 @@ class Settings(BaseModel):
   use_facial_recognition: bool = True
   use_qr_code: bool = True
   use_location: bool = False
+  opens: str = "8:00"
+  closes: str = "16:00"
+  open_days: str = dumps(["mon", "tue", "wed", "thur", "fri"]) # json string
   is_active: bool = True
 
   class Config:
@@ -166,3 +175,11 @@ class SettingsResponse(BaseModel):
   status: str
   data: Settings
   message: str | None = None
+
+
+class AttendanceHistoryWithUser(AttendanceHistory):
+  user: User
+
+class AttendanceHistoryResponseWithUser(AttendanceHistoryResponse):
+  status: str
+  data: AttendanceHistoryWithUser

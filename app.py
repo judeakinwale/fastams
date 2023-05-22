@@ -1,5 +1,6 @@
 from fastapi import FastAPI, APIRouter, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlite_database import engine # for sqlite db
 # from database import engine # for postgres db
 import models, user, location, attendance, auth, settings
@@ -7,6 +8,9 @@ import models, user, location, attendance, auth, settings
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+# from fastapi.security import HTTPBearer
+# security = HTTPBearer()
 
 
 origins = ["http://localhost:3000", "http://localhost:5000"] # to test cors works
@@ -22,7 +26,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+app.mount("/attendance_images", StaticFiles(directory="attendance_images"), name="attendance_images")
+app.mount("/attendance_qr_codes", StaticFiles(directory="attendance_qr_codes"), name="attendance_qr_codes")
+app.mount("/qr_codes", StaticFiles(directory="qr_codes"), name="qr_codes")
+app.mount("/training_images", StaticFiles(directory="training_images"), name="training_images")
 
 app.include_router(auth.router, tags=['Auth'], prefix='/api/v1/auth')
 app.include_router(user.router, tags=['User'], prefix='/api/v1/user')

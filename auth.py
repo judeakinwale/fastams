@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status, APIRouter, Response, UploadFile, File
+from fastapi import Depends, HTTPException, status, APIRouter, Response, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from sqlite_database import get_db, Base # for sqlite db
 # from database import get_db, Base # for postgres db
@@ -27,10 +27,35 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
   return {"status": "success", "data": user, "token": token}
 
 
+# [...] authenticate user using OAuth2
+# @router.post('/token', status_code=status.HTTP_201_CREATED, response_model=schemas.User)
+@router.post('/token', status_code=status.HTTP_201_CREATED)
+def login(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+  email = username
+
+  user = utils.authenticate_user(email, password, db)
+  if not user:
+    raise HTTPException(status_code=401, detail="Invalid username or password")
+  
+  token = utils.create_access_token(user)
+  return {
+    "status": "success", "data": user, "token": token, 
+    "access_token": token, "token_type": "bearer" # For OAuth2
+  }
+
+
 # [...] get authenticated user
 # @router.get('/me')
-@router.get('/me', response_model=schemas.User)
+@router.get('/me', response_model=schemas.UserResponse)
 def get_auth_user(current_user: models.User = Depends(utils.get_current_active_user)):
+  user = current_user
+  return {"status": "success", "data": user}
+
+
+# [...] get authenticated user using OAuth2
+# @router.get('/me/oauth')
+@router.get('/me/oauth', response_model=schemas.UserResponse)
+def get_oauth2_user(current_user: models.User = Depends(utils.get_current_oauth2_user)):
   user = current_user
   return {"status": "success", "data": user}
 
