@@ -35,7 +35,7 @@ def create_location(payload: schemas.BaseLocation, db: Session = Depends(get_db)
 # [...] get location by id
 @router.get('/{location_id}', response_model=schemas.LocationResponse)
 # @router.get('/{location_id}')
-def get_location(location_id: str):
+def get_location(location_id: str, db: Session = Depends(get_db)):
   get_location = db.query(models.Location).filter(models.Location.id == location_id)
   location = get_location.first()
 
