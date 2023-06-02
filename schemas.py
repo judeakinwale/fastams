@@ -180,6 +180,11 @@ class SettingsResponse(BaseModel):
 class AttendanceHistoryWithUser(AttendanceHistory):
   user: User
 
+
 class AttendanceHistoryResponseWithUser(AttendanceHistoryResponse):
   status: str
   data: AttendanceHistoryWithUser
+
+
+class ListAttendanceHistoryResponseWithUser(ListAttendanceHistoryResponse):
+  data: List[AttendanceHistoryWithUser]

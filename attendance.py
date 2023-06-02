@@ -339,7 +339,7 @@ def update_attendance_history(content: str | None = None, file: UploadFile = Fil
 
 
 # [...] get all attendance_history
-@router.get('/', response_model=schemas.ListAttendanceHistoryResponse)
+@router.get('/', response_model=schemas.ListAttendanceHistoryResponseWithUser)
 # @router.get('/')
 def get_attendance_history(db: Session = Depends(get_db), limit: int = 1000000000000, page: int = 1, search: str = ''):
   skip = (page - 1) * limit
