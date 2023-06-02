@@ -160,9 +160,9 @@ class Settings(BaseModel):
   use_facial_recognition: bool = True
   use_qr_code: bool = True
   use_location: bool = False
-  opens: str = "8:00"
-  closes: str = "16:00"
-  open_days: str = dumps(["mon", "tue", "wed", "thur", "fri"]) # json string
+  opens: str | None = "8:00"
+  closes: str | None = "16:00"
+  open_days: str | None = dumps(["mon", "tue", "wed", "thur", "fri"]) # json string
   is_active: bool = True
 
   class Config:

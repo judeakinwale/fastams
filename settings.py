@@ -46,7 +46,7 @@ def create_settings(payload: schemas.Settings, db: Session = Depends(get_db)):
 # [...] get settings by id
 @router.get('/{settings_id}', response_model=schemas.SettingsResponse)
 # @router.get('/{settings_id}')
-def get_settings(settings_id: str):
+def get_settings(settings_id: str, db: Session = Depends(get_db)):
   get_settings = db.query(models.Settings).filter(models.Settings.id == settings_id)
   settings = get_settings.first()
 
