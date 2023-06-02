@@ -16,20 +16,17 @@ router = APIRouter()
 def user_factory(payload: schemas.User, db: Session = Depends(get_db)):
   console.log({"payload": payload})
 
-  if not utils.validate_email(payload.email):
+  if not utils.validate_email(payload["email"]):
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Email Provided")
 
   db_user = utils.get_user_by_email(payload["email"], db)
   if db_user:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-  if not current_user:
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You're not authorized to create admin")
-
   if password:
     password = payload.pop("password")
     print(payload)
-    updated_payload = {**payload, "hashed_password": utils.get_password_hash(password)}
+    payload["hashed_password"] = utils.get_password_hash(password)
   else: payload.pop("password")
 
   random_chars = utils.random_string(5) # for generating random strings for image and qr code
