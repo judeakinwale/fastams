@@ -336,7 +336,7 @@ def update_user(user_id: str, payload: schemas.UpdateUser, db: Session = Depends
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this id: {user_id} found')
 
-  # update_data = payload.dict(exclude_unset=True)
+  update_data = payload.dict(exclude_unset=True)
   # if update_data["password"]: update_data["hashed_password"] = utils.get_password_hash(update_data["password"])
 
   # if password:
