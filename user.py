@@ -315,7 +315,7 @@ def create_admin_user(
 # [...] get user by id
 @router.get('/{user_id}', response_model=schemas.UserResponse)
 # @router.get('/{user_id}')
-def get_user(user_id: str):
+def get_user(user_id: str, db: Session = Depends(get_db)):
   get_user = db.query(models.User).filter(models.User.id == user_id)
   user = get_user.first()
 
