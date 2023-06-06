@@ -50,9 +50,12 @@ def create_attendance_history(email: str, file: UploadFile = File(...), long: st
   location = None
   use_location = utils.is_location_used(db)
   if use_location:
+    if not user.location_id:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location found for your account. Kindly contact the admin.')
+
     location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
     if not location:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
 
     if not (long or lat):
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
@@ -139,9 +142,12 @@ def update_attendance_history(email: str, file: UploadFile = File(...), long: st
   location = None
   use_location = utils.is_location_used(db)
   if use_location:
+    if not user.location_id:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location found for your account. Kindly contact the admin.')
+
     location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
     if not location:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
 
     if not (long or lat):
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
@@ -208,7 +214,7 @@ def create_attendance_history(content: str | None = None, file: UploadFile = Fil
   # # # if location is required
   # # location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
   # # if not location:
-  # #   raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
+  # #   raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
 
   # check user has recently (today) signed in and not signed out yet
   today = f"{date.today()}"
@@ -229,9 +235,12 @@ def create_attendance_history(content: str | None = None, file: UploadFile = Fil
   location = None
   use_location = utils.is_location_used(db)
   if use_location:
+    if not user.location_id:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location found for your account. Kindly contact the admin.')
+
     location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
     if not location:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
 
     if not (long or lat):
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
@@ -315,9 +324,12 @@ def update_attendance_history(content: str | None = None, file: UploadFile = Fil
   location = None
   use_location = utils.is_location_used(db)
   if use_location:
+    if not user.location_id:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location found for your account. Kindly contact the admin.')
+
     location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
     if not location:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found')
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
 
     if not (long or lat):
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
