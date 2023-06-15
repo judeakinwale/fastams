@@ -256,10 +256,12 @@ def send_email(reciepients, subject, message, image_path = None, image_name = ''
   all_reciepients = reciepients + cc
 
   # Send the email
-  server.sendmail(email, all_reciepients, msg.as_string())
+  response = server.sendmail(email, all_reciepients, msg.as_string())
 
   # Close the connection
   server.quit()
+
+  return response
 
 
 
@@ -355,3 +357,14 @@ def check_matching_location(location, long, lat, rad = 0.0005):
     return True
   return False
 # location utils
+
+
+# fix response from mongo db before display
+def mongo_res(instance):
+  if not instance: return
+
+  str_id = str(instance['_id'])
+  instance['id'] = str_id
+  instance['_id'] = str_id
+  # print({"instance": instance})
+  return instance

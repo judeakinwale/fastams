@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import List
-from pydantic import BaseModel
+from typing import List, Any
+from pydantic import BaseModel, Field
 from json import dumps
+# from bson import ObjectId
+from datetime import datetime
 
 
 class GenericResponse(BaseModel):
@@ -12,20 +14,28 @@ class GenericResponse(BaseModel):
 
 class BaseAttendanceHistory(BaseModel):
   email: str
-  user_id: int
-  location_id: int | None = None
+  user_id: str
+  location_id: str | None = None
   image: str | None = None
   qr_code: str | None = None
   is_active: bool = True
+  updated_at: datetime | None = datetime.now()
 
   class Config:
     orm_mode = True
     allow_population_by_field_name = True
     arbitrary_types_allowed = True
 
+
+class UpdateAttendanceHistory(BaseAttendanceHistory):
+  email: str | None = None
+  user_id: str | None = None
+  updated_at: datetime | None = datetime.now()
+
+
 class AttendanceHistory(BaseAttendanceHistory):
-  id: int | None = None
-  # id: str | None = None
+  _id: str | None = None # mongo id
+  id: str | None = None
   phone: str | None = None
   # image: str | None = None
   image_encoding: str | None = None
@@ -34,7 +44,6 @@ class AttendanceHistory(BaseAttendanceHistory):
   qr_code_content: str | None = None
   is_signed_in: bool = False
   is_signed_out: bool = False
-  is_active: bool = True
   created_at: datetime | None = None
   updated_at: datetime | None = None
 
@@ -56,9 +65,10 @@ class BaseUser(BaseModel):
   last_name: str
   email: str
   image: str | None = None
-  location_id: int | None = None
+  location_id: str | None = None
   is_admin: bool = False
   is_active: bool = True
+  updated_at: datetime | None = datetime.now()
 
   class Config:
     orm_mode = True
@@ -68,11 +78,16 @@ class BaseUser(BaseModel):
 
 class CreateUser(BaseUser):
   password: str | None = None
+  hashed_password: str | None = None
+  created_at: datetime | None = datetime.now()
+  # updated_at: datetime = datetime.now()
+
 
 class UpdateUser(CreateUser):
   first_name: str | None = None
   last_name: str | None = None
   email: str | None = None
+  updated_at: datetime = datetime.now()
 
 
 class ResetPassword(BaseModel):
@@ -80,8 +95,8 @@ class ResetPassword(BaseModel):
 
 
 class User(BaseUser):
-  id: int | None = None
-  # id: str | None = None
+  _id: str | None = None # mongo id
+  id: str | None = None
   hashed_password: str | None = None
   phone: str | None = None
   image_encoding: str | None = None
@@ -127,6 +142,7 @@ class BaseLocation(BaseModel):
   latitude: float | None = None
   radius: float | None = None
   is_active: bool = True
+  updated_at: datetime | None = datetime.now()
 
   class Config:
     orm_mode = True
@@ -134,9 +150,16 @@ class BaseLocation(BaseModel):
     arbitrary_types_allowed = True
 
 
+class UpdateLocation(BaseLocation):
+  name: str | None = None
+  address: str | None = None
+
+
 class Location(BaseLocation):
-  id: int | None = None
-  # id: str | None = None
+  # _id: ObjectId | None = None
+  # id: Any = Field(..., alias='_id')
+  _id: str | None = None # mongo id
+  id: str | None = None
   created_at: datetime | None = None
   updated_at: datetime | None = None
   attendance_history: List[AttendanceHistory] | None = []
@@ -157,6 +180,8 @@ class LocationResponse(BaseModel):
 
 
 class Settings(BaseModel):
+  _id: str | None = None # mongo id
+  id: str | None = None
   use_facial_recognition: bool = True
   use_qr_code: bool = True
   use_location: bool = False
@@ -164,6 +189,7 @@ class Settings(BaseModel):
   closes: str | None = "16:00"
   open_days: str | None = dumps(["mon", "tue", "wed", "thur", "fri"]) # json string
   is_active: bool = True
+  updated_at: datetime | None = datetime.now()
 
   class Config:
     orm_mode = True

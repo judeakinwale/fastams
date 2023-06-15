@@ -16,6 +16,15 @@ from datetime import timedelta
 # settings = Settings()
 
 
+class MongoSettings(BaseSettings):
+  MONGO_URI: str
+
+  class Config:
+    env_file = '.env'
+
+mongo_settings = MongoSettings()
+
+
 class JWTSettings:
     algorithm = "HS256"
     secret_key = "mysecretkey"
