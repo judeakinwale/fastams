@@ -17,15 +17,16 @@ from models import User
 from config import JWTSettings
 
 
-def get_app_settings(db: Session = Depends(get_db)):
-  settings = db.query(models.Settings).first()
+def get_app_settings():
+  settings = mongo_res(models.Settings.find_one())
   if not settings:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Settings not found. Setup the site settings first!')
   return settings
 
 
-def is_location_used(db: Session = Depends(get_db)):
-  return get_app_settings(db).use_location
+def is_location_used():
+  print("get_app_settings():", get_app_settings())
+  return get_app_settings()["use_location"]
 
 
 # auth utils
@@ -40,11 +41,11 @@ def verify_password(plain_password, hashed_password):
   return password_context.verify(plain_password, hashed_password)
 
 
-def get_user_by_email(email: str, db: Session = Depends(get_db)):
-  return db.query(models.User).filter(models.User.email == email).first()
+def get_user_by_email(email: str):
+  return mongo_res(models.User.find_one({'email': email}))
   
 
-def authenticate_user(email: str, password: str, db: Session = Depends(get_db)):
+def authenticate_user(email: str, password: str):
   user = get_user_by_email(email, db)
   if not user:
     return False
@@ -100,7 +101,7 @@ def decode_token_id(request: Request):
   # token_data = TokenData(user_id=user_id)
 
 
-def get_current_active_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+def get_current_active_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
   try:      
     token = credentials.credentials
     payload = jwt.decode(token, jwt_settings.secret_key, algorithms=[jwt_settings.algorithm])
@@ -115,13 +116,13 @@ def get_current_active_user(credentials: HTTPAuthorizationCredentials = Depends(
     # if credentials.credentials doesnt exist
     raise HTTPException(status_code=401, detail="Invalid authentication credentials...")
 
-  user = db.query(models.User).filter(models.User.id == user_id).first()
+  user = mongo_res(models.User.find_one({"_id": user_id}))
   if user is None:
     raise HTTPException(status_code=404, detail="User not found")
   return user
 
 
-def try_get_current_active_user(credentials: HTTPAuthorizationCredentials | None = Depends(security), db: Session = Depends(get_db)):
+def try_get_current_active_user(credentials: HTTPAuthorizationCredentials | None = Depends(security)):
   print(credentials.credentials)
   try:      
     token = credentials.credentials
@@ -137,14 +138,14 @@ def try_get_current_active_user(credentials: HTTPAuthorizationCredentials | None
     # if credentials.credentials doesnt exist
     return None
 
-  user = db.query(models.User).filter(models.User.id == user_id).first()
+  user = mongo_res(models.User.find_one({"_id": user_id}))
   if user is None:
     return None
   return user
 
 
-# def get_current_oauth2_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-def get_current_oauth2_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
+# def get_current_oauth2_user(token: str = Depends(oauth2_scheme)):
+def get_current_oauth2_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         print({"token": token, "oauth2_scheme": oauth2_scheme})
         payload = jwt.decode(token, jwt_settings.secret_key, algorithms=[jwt_settings.algorithm])
@@ -157,7 +158,7 @@ def get_current_oauth2_user(token: Annotated[str, Depends(oauth2_scheme)], db: S
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
-    user = db.query(models.User).filter(models.User.id == user_id).first()
+    user = mongo_res(models.User.find_one({"_id": user_id}))
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     print({"user": user})

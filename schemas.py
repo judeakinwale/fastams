@@ -189,12 +189,19 @@ class Settings(BaseModel):
   closes: str | None = "16:00"
   open_days: str | None = dumps(["mon", "tue", "wed", "thur", "fri"]) # json string
   is_active: bool = True
+  created_at: datetime | None = datetime.now()
   updated_at: datetime | None = datetime.now()
 
   class Config:
     orm_mode = True
     allow_population_by_field_name = True
     arbitrary_types_allowed = True
+
+
+class ListSettingsResponse(BaseModel):
+  status: str
+  count: int
+  data: List[Settings]
 
 
 class SettingsResponse(BaseModel):

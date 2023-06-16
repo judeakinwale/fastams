@@ -4,6 +4,9 @@ from sqlite_database import get_db, Base # for sqlite db
 # from database import get_db, Base # for postgres db
 from shutil import copyfileobj
 from datetime import date, timedelta
+from bson.objectid import ObjectId
+from datetime import datetime
+from pymongo import ReturnDocument
 import numpy as np
 import models
 import schemas
@@ -14,16 +17,70 @@ router = APIRouter()
 
 
 
-def save_attendance_image_file(first_name: str = "anon", email: str = "anon@test.com", file: UploadFile = File(None)):
+def get_detailed_attendance_history(attendance_history):
+  attendance_history = utils.mongo_res(attendance_history)
+
+  user = utils.mongo_res(models.User.find_one({'_id': ObjectId(attendance_history['user_id'])}))
+  attendance_history['user'] = user
+
+  location = utils.mongo_res(models.Location.find_one({'_id': ObjectId(attendance_history['location_id'])}))
+  attendance_history['location'] = location
+
+  print("user_id", attendance_history['user_id'], user)
+  print("location_id", attendance_history['location_id'], location)
+
+  return attendance_history
+
+
+def check_valid_user_for_facial_recognition(email: str):
+  user = utils.mongo_res(models.User.find_one({"email": email}))
+  if not user:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
+
+  if not user['image']:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No profile image found. Contact the admin to add an image to your profile.')
+
+  if not user['face_encoding']:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No face found in profile image. Contact the admin to update your profile image.')
+
+  return user
+
+
+def check_face_using_facial_recognition(user: schemas.User, file: UploadFile = File(...)):
+  # get saved face encoding
+  user_face_encoding = np.array(json.loads(user['face_encoding']))
+
+  # get image and face encodings from uploaded file
+  image_encoding, face_encoding = utils.check_face_in_picture(file.file)
+  # image_encoding_str = json.dumps(image_encoding.tolist())
+  image_encoding_str = json.dumps([]) # Image encoding is not needed
+  face_encoding_str = json.dumps(face_encoding.tolist())
+
+  # check if image matches
+  image_matches = utils.check_face_match(user_face_encoding, face_encoding)
+  print(image_matches)
+  if not image_matches:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Matching face not found. Try Again.')
+
+  return {
+    "image_encoding": image_encoding,
+    "face_encoding": face_encoding,
+    "image_encoding_str": image_encoding_str,
+    "face_encoding_str": face_encoding_str,
+  }
+
+
+def save_attendance_image_file(first_name: str = "anon", email: str = "anon@test.com", file: UploadFile = File(None), is_qr_code: bool = True, folder_name: str = "attendance_images"):
   # save qr code to storage
   if file:
     # generate unique name for qr code image
     today = f"{date.today()}"
     random_chars = utils.random_string(2)
     file_extension = utils.get_file_extension(file.filename)
-    relative_image_path = f"./attendance_qr_codes/{user.first_name}-{user.email}-{today}-{random_chars}{file_extension}"
+    folder_name = "attendance_qr_codes" if is_qr_code else folder_name
+    relative_image_path = f"./{folder_name}/{first_name}-{email}-{today}-{random_chars}{file_extension}"
 
-    # save file to attendance images folder
+    # save file to appriopriate folder {folder_name}
     with open(relative_image_path, "wb") as buffer:
       # print(buffer)
       copyfileobj(file.file, buffer)
@@ -53,42 +110,39 @@ def get_user_and_email_from_qr_code(content: str | None = None, file: UploadFile
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
 
   if file: 
-    save_attendance_image_file(user.first_name, user.email, file)
+    save_attendance_image_file(user['first_name'], user['email'], file)
 
   return user, email
 
 
-def check_recent_attendance_history(email: str):
+def check_recent_attendance_history(email: str, is_sign_out: bool = False):
   # check user has recently (today) signed in and not signed out yet
-  today = f"{date.today()}"
-  tomorrow = f"{date.today() + timedelta(1)}"
+  # convert date to datetime for pymongo
+  today = datetime.combine(date.today(), datetime.min.time())
+  tomorrow = datetime.combine((date.today() + timedelta(1)), datetime.min.time())
   attendance_history = utils.mongo_res(models.AttendanceHistory.find_one({
     'email': email,
     'created_at': {'$gte': today, '$lte': tomorrow},
-    # 'created_at': ObjectId(location_id),
     'is_signed_in': True,
     'is_signed_out': False,
 
   }))
-  # get_attendance_history = db.query(models.AttendanceHistory).filter(
-  #   models.AttendanceHistory.email == email, 
-  #   models.AttendanceHistory.created_at > today, 
-  #   models.AttendanceHistory.created_at < tomorrow,
-  #   models.AttendanceHistory.is_signed_in == True,
-  #   models.AttendanceHistory.is_signed_out == False,
-  # )
-  # attendance_history = get_attendance_history.first()
+
+  if is_sign_out:
+    # throw error if signing out and no attendance history found
+    if not attendance_history:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this email: {email} found')
+    return attendance_history
 
   if attendance_history:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have signed in with this email: {email}. Sign out instead')
 
 
-def check_location(location_id: str, email: str):
-  # check location
+def check_location(location_id: str, email: str, long: str | None = None, lat: str | None = None):
   location = None
-  use_location = utils.is_location_used(db)
+  use_location = utils.is_location_used()
   if use_location:
-    if not user.location_id:
+    if not user['location_id']:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location found for your account. Kindly contact the admin.')
 
     location = utils.mongo_res(models.Location.find_one({'_id': ObjectId(location_id)}))
@@ -104,346 +158,111 @@ def check_location(location_id: str, email: str):
 
 
 
-# # [...] attendance sign in
-# @router.post('/sign-in', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign In")
-# # @router.post('/sign-in', status_code=status.HTTP_201_CREATED)
-# # def create_attendance_history(payload: schemas.AttendanceHistory, file: UploadFile = File(...), db: Session = Depends(get_db)):
-# def create_attendance_history(email: str, file: UploadFile = File(...), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
-#   # payload_email = payload.dict()["email"]
-#   payload_email = email
-#   user = db.query(models.User).filter(models.User.email == payload_email).first()
-#   if not user:
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
+# [...] attendance sign in
+@router.post('/sign-in', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign In")
+# @router.post('/sign-in', status_code=status.HTTP_201_CREATED)
+# def create_attendance_history(payload: schemas.AttendanceHistory, file: UploadFile = File(...)):
+def create_attendance_history(email: str, file: UploadFile = File(...), long: str | None = None, lat: str | None = None):
 
-#   if not user.image:
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No profile image found. Contact the admin to add an image to your profile.')
+  user = check_valid_user_for_facial_recognition(email)
 
-#   if not user.face_encoding:
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No face found in profile image. Contact the admin to update your profile image.')
+  attendance_history = check_recent_attendance_history(email)
 
+  location = check_location(user['location_id'], email)
 
-#   # check user has recently (today) signed in and not signed out yet
-#   today = f"{date.today()}"
-#   tomorrow = f"{date.today() + timedelta(1)}"
-#   get_attendance_history = db.query(models.AttendanceHistory).filter(
-#     models.AttendanceHistory.email == email, 
-#     models.AttendanceHistory.created_at > today, 
-#     models.AttendanceHistory.created_at < tomorrow,
-#     models.AttendanceHistory.is_signed_in == True,
-#     models.AttendanceHistory.is_signed_out == False,
-#   )
-#   attendance_history = get_attendance_history.first()
+  face_check_result = check_face_using_facial_recognition(user, file)
 
-#   if attendance_history:
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have signed in with this email: {email}. Sign out instead')
+  relative_image_path = save_attendance_image_file(user["first_name"], email, file, False)
 
-#   # check location
-#   location = None
-#   use_location = utils.is_location_used(db)
-#   if use_location:
-#     if not user.location_id:
-#       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location found for your account. Kindly contact the admin.')
+  # update user instance with image and encodings
+  payload = {
+    "email": email,
+    "user_id": user["id"],
+    "location_id": location["id"] if location else None,
+    "image": relative_image_path, 
+    "image_encoding": face_check_result["image_encoding_str"], 
+    "face_encoding": face_check_result["face_encoding_str"], 
+    "is_signed_in": True,
+    "is_signed_out": False,
+    "created_at": datetime.now(),
+    "updated_at": datetime.now(),
+  }  
 
-#     location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
-#     if not location:
-#       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
+  created_id = models.AttendanceHistory.insert_one(payload).inserted_id
+  attendance_history = get_detailed_attendance_history(models.AttendanceHistory.find_one({'_id': ObjectId(created_id)}))
+  print({"attendance_history": attendance_history})
 
-#     if not (long or lat):
-#       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
-    
-#     is_location_match = utils.check_matching_location(location, float(long), float(lat))
-#     if not is_location_match:
-#       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You are not allowed to signin from this location')
-
-#   # check face using facial recognition
-#   # get saved face encoding
-#   user_face_encoding = np.array(json.loads(user.face_encoding))
-
-#   # get image and face encodings from uploaded file
-#   image_encoding, face_encoding = utils.check_face_in_picture(file.file)
-#   # image_encoding_str = json.dumps(image_encoding.tolist())
-#   image_encoding_str = json.dumps([]) # Image encoding is not needed
-#   face_encoding_str = json.dumps(face_encoding.tolist())
-
-#   # check if image matches
-#   image_matches = utils.check_face_match(user_face_encoding, face_encoding)
-#   print(image_matches)
-#   if not image_matches:
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Matching face not found. Try Again.')
-
-#   # generate unique name for image
-#   random_chars = utils.random_string(2)
-#   file_extension = utils.get_file_extension(file.filename)
-#   relative_image_path = f"./attendance_images/{user.first_name}-{user.email}-{today}-{random_chars}{file_extension}"
-
-#   # save file to attendance images folder
-#   with open(relative_image_path, "wb") as buffer:
-#     # print(buffer)
-#     copyfileobj(file.file, buffer)
-
-#   # update user instance with image and encodings
-#   updated_payload = {
-#     # **payload.dict(),
-#     "email": email,
-#     "user_id": user.id,
-#     "location_id": location.id if location else None,
-#     "image": relative_image_path, 
-#     "image_encoding": image_encoding_str, 
-#     "face_encoding": face_encoding_str, 
-#     "is_signed_in": True,
-#   }  
-
-#   # new_attendance_history = models.AttendanceHistory(**payload.dict())
-#   new_attendance_history = models.AttendanceHistory(**updated_payload)
-#   db.add(new_attendance_history)
-#   db.commit()
-#   db.refresh(new_attendance_history)
-#   return {"status": "success", "data": new_attendance_history}
+  return {"status": "success", "data": attendance_history}
 
 
-# # [...] attendance sign out
-# @router.patch('/sign-out', response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign Out")
-# # @router.post('/sign-out')
-# def update_attendance_history(email: str, file: UploadFile = File(...), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
-#   payload_email = email
-#   user = db.query(models.User).filter(models.User.email == payload_email).first()
-#   if not user:
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
 
-#   if not user.image:
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No profile image found. Contact the admin to add an image to your profile.')
+# [...] attendance sign out
+@router.patch('/sign-out', response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign Out")
+# @router.post('/sign-out')
+def update_attendance_history(email: str, file: UploadFile = File(...), long: str | None = None, lat: str | None = None):
 
-#   if not user.face_encoding:
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No face found in profile image. Contact the admin to update your profile image.')
-  
-#   today = f"{date.today()}"
-#   tomorrow = f"{date.today() + timedelta(1)}"
-#   get_attendance_history = db.query(models.AttendanceHistory).filter(
-#     models.AttendanceHistory.email == email, 
-#     models.AttendanceHistory.created_at > today, 
-#     models.AttendanceHistory.created_at < tomorrow, 
-#     models.AttendanceHistory.is_signed_out == False,
-#   )
-#   attendance_history = get_attendance_history.first()
+  user = check_valid_user_for_facial_recognition(email)
 
-#   if not attendance_history:
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have not signed in with this email: {email}. Sign in instead')
+  attendance_history = check_recent_attendance_history(email, True)
 
-#   # check location
-#   location = None
-#   use_location = utils.is_location_used(db)
-#   if use_location:
-#     if not user.location_id:
-#       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location found for your account. Kindly contact the admin.')
+  location = check_location(user['location_id'], email)
 
-#     location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
-#     if not location:
-#       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
+  face_check_result = check_face_using_facial_recognition(user, file)
 
-#     if not (long or lat):
-#       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
-    
-#     is_location_match = utils.check_matching_location(location, float(long), float(lat))
-#     if not is_location_match:
-#       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You are not allowed to signin from this location')
+  payload = {"is_signed_out": True, "updated_at": datetime.now()}
 
-#   if not attendance_history:
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this email: {email} found')
+  attendance_history = get_detailed_attendance_history(models.AttendanceHistory.find_one_and_update({'_id': ObjectId(attendance_history["id"])}, {'$set': payload}, return_document=ReturnDocument.AFTER))
+  return {"status": "success", "data": attendance_history}
 
-
-#   # check face using facial recognition
-#   # get saved face encoding
-#   user_face_encoding = np.array(json.loads(user.face_encoding))
-
-#   # get image and face encodings from uploaded file
-#   image_encoding, face_encoding = utils.check_face_in_picture(file.file)
-#   # image_encoding_str = json.dumps(image_encoding.tolist())
-#   image_encoding_str = json.dumps([]) # Image encoding is not needed
-#   face_encoding_str = json.dumps(face_encoding.tolist())
-
-#   # check if image matches
-#   image_matches = utils.check_face_match(user_face_encoding, face_encoding)
-#   print(image_matches)
-#   if not image_matches:
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Matching face not found. Try Again.')
-
-#   update_data = {"is_signed_out": True}
-#   get_attendance_history.filter(models.AttendanceHistory.id == attendance_history.id).update(update_data, synchronize_session=False)
-#   db.commit()
-#   db.refresh(attendance_history)
-#   return {"status": "success", "data": attendance_history}
 
 
 
 # [...] attendance sign in with qr code
 @router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign In with QR")
-def create_attendance_history(content: str | None = None, file: UploadFile = File(None), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
-  # if not (content or file): 
-  #   raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No QR Code provided. Try again.')
-  
-  # qr_code_content = content # default
-
-  # if not content:
-  #   # get qr code and validate content
-  #   cv_file = utils.get_opencv_img_from_buffer(file.file)
-  #   qr_code_content = utils.read_qr_code(cv_file, True)
-
-  #   # qr_code_content = utils.read_qr_code(file.file)
-  #   print({"qr_code_content": qr_code_content})
-  #   if not utils.validate_email(qr_code_content):
-  #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid QR Code. Try again.')
-
-  # # payload_email = payload.dict()["email"]
-  # email = qr_code_content
-  # user = db.query(models.User).filter(models.User.email == email).first()
-  # if not user:
-  #   raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
+def create_attendance_history(content: str | None = None, file: UploadFile = File(None), long: str | None = None, lat: str | None = None):
 
   user, email = get_user_and_email_from_qr_code(content, file)
 
-  # location = None
-  # # # if location is required
-  # # location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
-  # # if not location:
-  # #   raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
-
-  # # check user has recently (today) signed in and not signed out yet
-  # today = f"{date.today()}"
-  # tomorrow = f"{date.today() + timedelta(1)}"
-  # get_attendance_history = db.query(models.AttendanceHistory).filter(
-  #   models.AttendanceHistory.email == email, 
-  #   models.AttendanceHistory.created_at > today, 
-  #   models.AttendanceHistory.created_at < tomorrow,
-  #   models.AttendanceHistory.is_signed_in == True,
-  #   models.AttendanceHistory.is_signed_out == False,
-  # )
-  # attendance_history = get_attendance_history.first()
-
-  # if attendance_history:
-  #   raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have signed in with this email: {email}. Sign out instead')
-
   attendance_history = check_recent_attendance_history(email)
 
-  # # check location
-  # location = None
-  # use_location = utils.is_location_used(db)
-  # if use_location:
-  #   if not user.location_id:
-  #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location found for your account. Kindly contact the admin.')
+  location = check_location(user['location_id'], email)
 
-  #   location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
-  #   if not location:
-  #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
-
-  #   if not (long or lat):
-  #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
-    
-  #   is_location_match = utils.check_matching_location(location, float(long), float(lat))
-  #   if not is_location_match:
-  #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You are not allowed to signin from this location')
-
-  location = check_location(user.location_id, email)
-
-  # # save qr code to storage
-  # if not content:
-  #   # generate unique name for qr code image
-  #   random_chars = utils.random_string(2)
-  #   file_extension = utils.get_file_extension(file.filename)
-  #   relative_image_path = f"./attendance_qr_codes/{user.first_name}-{user.email}-{today}-{random_chars}{file_extension}"
-
-  #   # save file to attendance images folder
-  #   with open(relative_image_path, "wb") as buffer:
-  #     # print(buffer)
-  #     copyfileobj(file.file, buffer)
-
-  relative_image_path = save_attendance_image_file(user.first_name, email, file)
+  relative_image_path = save_attendance_image_file(user["first_name"], email, file)
 
   # update user instance with image and encodings
-  updated_payload = {
-    # **payload.dict(),
+  payload = {
     "email": email,
-    "user_id": user.id,
-    "location_id": location.id if location else None,
+    "user_id": user["id"],
+    "location_id": location["id"] if location else None,
     "qr_code": relative_image_path if not content else None, 
     "qr_code_content": email, 
     "is_signed_in": True,
+    "is_signed_out": False,
+    "created_at": datetime.now(),
+    "updated_at": datetime.now(),
   }  
 
+  created_id = models.AttendanceHistory.insert_one(payload).inserted_id
+  attendance_history = get_detailed_attendance_history(models.AttendanceHistory.find_one({'_id': ObjectId(created_id)}))
+  print({"attendance_history": attendance_history})
 
-  # # new_attendance_history = models.AttendanceHistory(**payload.dict())
-  # new_attendance_history = models.AttendanceHistory(**updated_payload)
-  # db.add(new_attendance_history)
-  # db.commit()
-  # db.refresh(new_attendance_history)
-
-  attendance_history = utils.mongo_res(models.AttendanceHistory.find_one_and_update({'_id': ObjectId(attendance_history.id)}, {'$set': payload}, return_document=ReturnDocument.AFTER))
-  return {"status": "success", "data": new_attendance_history}
+  return {"status": "success", "data": attendance_history}
 
 
 # [...] attendance sign out with qr code
 @router.post('/sign-out-qr', response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign Out with QR")
 # @router.post('/sign-out-qr')
-def update_attendance_history(content: str | None = None, file: UploadFile = File(None), long: str | None = None, lat: str | None = None, db: Session = Depends(get_db)):
-  if not (content or file): 
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No QR Code provided. Try again.')
+def update_attendance_history(content: str | None = None, file: UploadFile = File(None), long: str | None = None, lat: str | None = None):
 
-  qr_code_content = content # default
+  user, email = get_user_and_email_from_qr_code(content, file)
 
-  if not content:
-    # get qr code and validate content
-    cv_file = utils.get_opencv_img_from_buffer(file.file)
-    qr_code_content = utils.read_qr_code(cv_file, True)
+  attendance_history = check_recent_attendance_history(email, True)
 
-    # qr_code_content = utils.read_qr_code(file)
-    print({"qr_code_content": qr_code_content})
-    if not utils.validate_email(qr_code_content):
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid QR Code. Try again.')
+  location = check_location(user['location_id'], email)
 
-  email = qr_code_content
-  user = db.query(models.User).filter(models.User.email == email).first()
-  if not user:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
+  payload = {"is_signed_out": True, "updated_at": datetime.now()}
 
-  # check user has recently (today) signed in and not signed out yet
-  today = f"{date.today()}"
-  tomorrow = f"{date.today() + timedelta(1)}"
-  get_attendance_history = db.query(models.AttendanceHistory).filter(
-    models.AttendanceHistory.email == email, 
-    models.AttendanceHistory.created_at > today, 
-    models.AttendanceHistory.created_at < tomorrow, 
-    models.AttendanceHistory.is_signed_out == False,
-  )
-  attendance_history = get_attendance_history.first()
-
-  if not attendance_history:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this email: {email} found')
-
-  # check location
-  location = None
-  use_location = utils.is_location_used(db)
-  if use_location:
-    if not user.location_id:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location found for your account. Kindly contact the admin.')
-
-    location = db.query(models.Location).filter(models.Location.id == user.location_id).first()
-    if not location:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
-
-    if not (long or lat):
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
-    
-    is_location_match = utils.check_matching_location(location, float(long), float(lat))
-    if not is_location_match:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You are not allowed to signin from this location')
-
-  if not attendance_history:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this email: {email} found')
-
-
-  update_data = {"is_signed_out": True}
-  get_attendance_history.filter(models.AttendanceHistory.id == attendance_history.id).update(update_data, synchronize_session=False)
-  db.commit()
-  db.refresh(attendance_history)
+  attendance_history = get_detailed_attendance_history(models.AttendanceHistory.find_one_and_update({'_id': ObjectId(attendance_history["id"])}, {'$set': payload}, return_document=ReturnDocument.AFTER))
   return {"status": "success", "data": attendance_history}
 
 
@@ -451,11 +270,11 @@ def update_attendance_history(content: str | None = None, file: UploadFile = Fil
 # [...] get all attendance_history
 @router.get('/', response_model=schemas.ListAttendanceHistoryResponseWithUser)
 # @router.get('/')
-def get_attendance_history(db: Session = Depends(get_db), limit: int = 1000000000000, page: int = 1, search: str = ''):
+def get_attendance_histories(db: Session = Depends(get_db), limit: int = 1000000000000, page: int = 1, search: str = ''):
   skip = (page - 1) * limit
 
   # attendance_history = db.query(models.AttendanceHistory).filter(models.AttendanceHistory.email.contains(search)).limit(limit).offset(skip).all()
-  attendance_history = [utils.mongo_res(attendance) for attendance in models.AttendanceHistory.find()]
+  attendance_history = [get_detailed_attendance_history(attendance) for attendance in models.AttendanceHistory.find()]
   print(attendance_history)
   return {'status': 'success', 'count': len(attendance_history), 'data': attendance_history}
 
@@ -463,21 +282,21 @@ def get_attendance_history(db: Session = Depends(get_db), limit: int = 100000000
 # [...] create attendance_history
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponseWithUser)
 # @router.post('/', status_code=status.HTTP_201_CREATED)
-def create_attendance_history(payload: schemas.BaseAttendanceHistory, db: Session = Depends(get_db)):
+def create_attendance_history(payload: schemas.BaseAttendanceHistory):
   payload = payload.dict(exclude_unset=True)
-  payload.update({'createdAt': datetime.now()})
+  payload.update({'created_at': datetime.now(), 'updated_at': datetime.now()})
   print({"payload": payload})
 
   created_id = models.AttendanceHistory.insert_one(payload).inserted_id
-  attendance_history = utils.mongo_res(models.AttendanceHistory.find_one({'_id': created_id}))
+  attendance_history = utils.mongo_res(models.AttendanceHistory.find_one({'_id': ObjectId(created_id)}))
   return {"status": "success", "data": attendance_history}
 
 
 # [...] get attendance_history by id
 @router.get('/{attendance_history_id}', response_model=schemas.AttendanceHistoryResponseWithUser)
 # @router.get('/{attendance_history_id}')
-def get_attendance_history(attendance_history_id: str, db: Session = Depends(get_db)):
-  get_attendance_history = utils.mongo_res(models.AttendanceHistory.find_one({'_id': ObjectId(attendance_history_id)}))
+def get_attendance_history(attendance_history_id: str):
+  attendance_history = get_detailed_attendance_history(models.AttendanceHistory.find_one({'_id': ObjectId(attendance_history_id)}))
   if not attendance_history:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this id: {attendance_history_id} found')
 
@@ -487,13 +306,12 @@ def get_attendance_history(attendance_history_id: str, db: Session = Depends(get
 
 # [...] edit attendance_history by id
 @router.patch('/{attendance_history_id}', response_model=schemas.AttendanceHistoryResponseWithUser)
-def update_attendance_history(attendance_history_id: str, payload: schemas.AttendanceHistory, db: Session = Depends(get_db)):
+def update_attendance_history(attendance_history_id: str, payload: schemas.UpdateAttendanceHistory):
   payload = payload.dict(exclude_unset=True)
   payload.update({'updated_at': datetime.now()})
   print({"payload": payload})
 
-  attendance_history = utils.mongo_res(models.AttendanceHistory.find_one_and_update({'_id': ObjectId(attendance_history_id)}, {'$set': payload}, return_document=ReturnDocument.AFTER))
-
+  attendance_history = get_detailed_attendance_history(models.AttendanceHistory.find_one_and_update({'_id': ObjectId(attendance_history_id)}, {'$set': payload}, return_document=ReturnDocument.AFTER))
   if not attendance_history:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this id: {attendance_history_id} found')
 
@@ -502,8 +320,8 @@ def update_attendance_history(attendance_history_id: str, payload: schemas.Atten
 
 # [...] delete attendance_history by id
 @router.delete('/{attendance_history_id}', status_code=status.HTTP_204_NO_CONTENT)
-def delete_attendance_history(attendance_history_id: str, db: Session = Depends(get_db)):
-  get_attendance_history = utils.mongo_res(models.AttendanceHistory.find_one_and_delete({'_id': ObjectId(attendance_history_id)}))
+def delete_attendance_history(attendance_history_id: str):
+  attendance_history = utils.mongo_res(models.AttendanceHistory.find_one_and_delete({'_id': ObjectId(attendance_history_id)}))
   if not attendance_history:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this id: {id} found')
 
