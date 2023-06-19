@@ -168,7 +168,7 @@ def create_admin_user(
   password: str = Form(...),
   location_id: str | None = Form(None),
   file: UploadFile | None = File(None), 
-  # current_user: models.User = Depends(utils.get_current_active_user),
+  current_user: models.User = Depends(utils.get_current_active_user),
 ):
   payload = {
     "first_name": first_name,

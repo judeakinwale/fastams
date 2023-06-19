@@ -33,7 +33,7 @@ app.mount("/attendance_qr_codes", StaticFiles(directory="attendance_qr_codes"), 
 app.mount("/qr_codes", StaticFiles(directory="qr_codes"), name="qr_codes")
 app.mount("/training_images", StaticFiles(directory="training_images"), name="training_images")
 
-# app.include_router(auth.router, tags=['Auth'], prefix='/api/v1/auth')
+app.include_router(auth.router, tags=['Auth'], prefix='/api/v1/auth')
 app.include_router(user.router, tags=['User'], prefix='/api/v1/user')
 app.include_router(location.router, tags=['Location'], prefix='/api/v1/location')
 app.include_router(attendance.router, tags=['Attendance'], prefix='/api/v1/attendance')

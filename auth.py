@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from sqlite_database import get_db, Base # for sqlite db
 # from database import get_db, Base # for postgres db
 from shutil import copyfileobj
+from bson.objectid import ObjectId
+from datetime import datetime
+from pymongo import ReturnDocument
 from datetime import datetime, timedelta
 import models
 import schemas
@@ -14,12 +17,12 @@ router = APIRouter()
 # [...] authenticate user
 # @router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.User)
 @router.post('/', status_code=status.HTTP_201_CREATED)
-def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
-  login_details = payload.dict(exclude_unset=True)
-  email = login_details['email']
-  password = login_details['password']
+def login(payload: schemas.UserLogin):
+  payload = payload.dict(exclude_unset=True)
+  email = payload['email']
+  password = payload['password']
 
-  user = utils.authenticate_user(email, password, db)
+  user = utils.authenticate_user(email, password)
   if not user:
     raise HTTPException(status_code=401, detail="Invalid email or password")
   
@@ -30,10 +33,10 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
 # [...] authenticate user using OAuth2
 # @router.post('/token', status_code=status.HTTP_201_CREATED, response_model=schemas.User)
 @router.post('/token', status_code=status.HTTP_201_CREATED)
-def login(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+def login(username: str = Form(...), password: str = Form(...)):
   email = username
 
-  user = utils.authenticate_user(email, password, db)
+  user = utils.authenticate_user(email, password)
   if not user:
     raise HTTPException(status_code=401, detail="Invalid username or password")
   
@@ -62,21 +65,18 @@ def get_oauth2_user(current_user: models.User = Depends(utils.get_current_oauth2
 
 # [...] forgot password
 @router.get('/forgot-password', response_model=schemas.ResetPasswordResponse)
-def forgot_password(email: str, db: Session = Depends(get_db)):
-  get_user = db.query(models.User).filter(models.User.email == email)
-  user = get_user.first()
+def forgot_password(email: str):
+  user = utils.mongo_res(models.User.find_one({"email": email}))
 
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found') # change the message
 
-  update_data = {
+  payload = {
     'reset_password_token': utils.generate_unique_token(),
     'reset_token_expire': datetime.now() + timedelta(hours=1),
-  }
-
-  get_user.filter(models.User.email == email).update(update_data, synchronize_session=False)
-  db.commit()
-  db.refresh(user)
+    'updated_at': datetime.now(),
+  }  
+  user = utils.mongo_res(models.User.find_one_and_update({'_id': ObjectId(user["id"])}, {'$set': payload}, return_document=ReturnDocument.AFTER))
 
   url = "https://pyams.azurewebsites.net/"
   reciepients = [email]
@@ -94,27 +94,21 @@ def forgot_password(email: str, db: Session = Depends(get_db)):
 
 # [...] reset password
 @router.post('/reset-password/{reset_token}', response_model=schemas.ResetPasswordResponse)
-def reset_password(reset_token: str, payload: schemas.ResetPassword, db: Session = Depends(get_db)):
-  get_user = db.query(models.User).filter(
-    models.User.reset_password_token == reset_token, 
-    models.User.reset_token_expire <= datetime.now()
-  )
-  user = get_user.first()
+def reset_password(reset_token: str, payload: schemas.ResetPassword):
+  user = utils.mongo_res(models.User.find({"reset_password_token": reset_token, "reset_token_expire": {"$lte": datetime.now()}}))
 
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid password reset request.')
 
-  update_data = payload.dict(exclude_unset=True)
-  update_data['reset_password_token'] = None
-  update_data['reset_token_expire'] = None
+  payload = payload.dict(exclude_unset=True)
+  payload['reset_password_token'] = None
+  payload['reset_token_expire'] = None
+  payload['updated_at'] = datetime.now()
 
-  if "password" in update_data:
-    password = update_data.pop("password")
-    print(update_data)
-    update_data = {**update_data, "hashed_password": utils.get_password_hash(password)}
+  if "password" in payload:
+    password = payload.pop("password")
+    payload["hashed_password"] = utils.get_password_hash(password)
 
-  get_user.filter(models.User.reset_password_token == reset_token).update(update_data, synchronize_session=False)
-  db.commit()
-  db.refresh(user)
+  user = utils.mongo_res(models.User.find_one_and_update({'_id': ObjectId(user["id"])}, {'$set': payload}, return_document=ReturnDocument.AFTER))
 
   return {"status": "success", "data": user}

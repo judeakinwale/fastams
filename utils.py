@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorization
 from sqlalchemy.orm import Session
 from sqlite_database import get_db, Base # for sqlite db
 # from database import get_db, Base # for postgres db
+from bson.objectid import ObjectId
 import face_recognition
 import cv2
 import numpy as np
@@ -46,10 +47,10 @@ def get_user_by_email(email: str):
   
 
 def authenticate_user(email: str, password: str):
-  user = get_user_by_email(email, db)
+  user = get_user_by_email(email)
   if not user:
     return False
-  if not verify_password(password, user.hashed_password):
+  if not verify_password(password, user["hashed_password"]):
     return False
   return user
 
@@ -80,7 +81,7 @@ jwt_settings = JWTSettings()
 def create_access_token(user: User):
     # expires_delta = timedelta(minutes=jwt_settings.access_token_expire_minutes)
     expires_delta = timedelta(days=jwt_settings.access_token_expire)
-    to_encode = {"id": str(user.id), "exp": datetime.utcnow() + expires_delta}
+    to_encode = {"id": str(user["id"]), "exp": datetime.utcnow() + expires_delta}
     encoded_jwt = jwt.encode(to_encode, jwt_settings.secret_key, algorithm=jwt_settings.algorithm)
     return encoded_jwt
 
@@ -116,7 +117,7 @@ def get_current_active_user(credentials: HTTPAuthorizationCredentials = Depends(
     # if credentials.credentials doesnt exist
     raise HTTPException(status_code=401, detail="Invalid authentication credentials...")
 
-  user = mongo_res(models.User.find_one({"_id": user_id}))
+  user = mongo_res(models.User.find_one({"_id": ObjectId(user_id)}))
   if user is None:
     raise HTTPException(status_code=404, detail="User not found")
   return user
