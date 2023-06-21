@@ -51,9 +51,14 @@ def create_settings(payload: schemas.Settings):
 
 # [...] get settings by id
 @router.get('/{settings_id}', response_model=schemas.SettingsResponse)
+@router.get('/default', response_model=schemas.SettingsResponse)
 # @router.get('/{settings_id}')
-def get_settings(settings_id: str):
-  settings = utils.mongo_res(models.Settings.find_one({"_id": ObjectId(settings_id)}))
+def get_settings(settings_id: str | None = None):
+  # if not ObjectId.is_valid(settings_id): raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid Id provided')
+  filter = {}
+  if ObjectId.is_valid(settings_id): filter = {"_id": ObjectId(settings_id)}
+
+  settings = utils.mongo_res(models.Settings.find_one(filter))
   if not settings:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No settings with this id: {settings_id} found')
 
@@ -63,13 +68,16 @@ def get_settings(settings_id: str):
 
 # [...] edit settings by id
 @router.patch('/{settings_id}', response_model=schemas.SettingsResponse)
+@router.patch('/default', response_model=schemas.SettingsResponse)
 # @router.patch('/{settings_id}')
 def update_settings(settings_id: str, payload: schemas.Settings):
   payload = payload.dict(exclude_unset=True)
   payload.update({'updated_at': datetime.now()})
   print({"payload": payload})
 
-  filter = {"_id": ObjectId(settings_id)}
+  # if not ObjectId.is_valid(settings_id): raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid Id provided')
+  filter = {}
+  if ObjectId.is_valid(settings_id): filter = {"_id": ObjectId(settings_id)}
   
   settings = utils.mongo_res(models.Settings.find_one_and_update(filter, {"$set": payload}, return_document=ReturnDocument.AFTER))
   if not settings:
