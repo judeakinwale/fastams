@@ -28,10 +28,10 @@ def get_detailed_user(user):
 
 
 def update_payload_with_password_hash(payload: schemas.CreateUser) -> schemas.CreateUser:
-  password = payload.pop("password")
-  if password:
-    print(payload)
+  if "password" in payload:
+    password = payload.pop("password")
     payload["hashed_password"] = utils.get_password_hash(password)
+    # print(payload)
 
   return payload
 
