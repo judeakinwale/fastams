@@ -138,11 +138,12 @@ def check_recent_attendance_history(email: str, is_sign_out: bool = False):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have signed in with this email: {email}. Sign out instead')
 
 
-def check_location(location_id: str, email: str, long: str | None = None, lat: str | None = None):
+def check_location(location_id: str, email: str, long: str | None = None, lat: str | None = None, is_sign_out: bool = False):  
   location = None
   use_location = utils.is_location_used()
+  attendance_type = "Signout" if is_sign_out else "Signin"
   if use_location:
-    if not user['location_id']:
+    if not location_id:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location found for your account. Kindly contact the admin.')
 
     location = utils.mongo_res(models.Location.find_one({'_id': ObjectId(location_id)}))
@@ -150,11 +151,11 @@ def check_location(location_id: str, email: str, long: str | None = None, lat: s
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
 
     if not (long or lat):
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Signin location not provided!')
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'{attendance_type} location not provided!')
     
     is_location_match = utils.check_matching_location(location, float(long), float(lat))
     if not is_location_match:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You are not allowed to signin from this location')
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You are not allowed to {attendance_type} from this location')
 
 
 
@@ -168,7 +169,7 @@ def create_attendance_history(email: str, file: UploadFile = File(...), long: st
 
   attendance_history = check_recent_attendance_history(email)
 
-  location = check_location(user['location_id'], email)
+  location = check_location(user['location_id'], email, long, lat)
 
   face_check_result = check_face_using_facial_recognition(user, file)
 
@@ -205,7 +206,7 @@ def update_attendance_history(email: str, file: UploadFile = File(...), long: st
 
   attendance_history = check_recent_attendance_history(email, True)
 
-  location = check_location(user['location_id'], email)
+  location = check_location(user['location_id'], email, long, lat, True)
 
   face_check_result = check_face_using_facial_recognition(user, file)
 
@@ -225,7 +226,7 @@ def create_attendance_history(content: str | None = None, file: UploadFile = Fil
 
   attendance_history = check_recent_attendance_history(email)
 
-  location = check_location(user['location_id'], email)
+  location = check_location(user['location_id'], email, long, lat)
 
   relative_image_path = save_attendance_image_file(user["first_name"], email, file)
 
@@ -258,7 +259,7 @@ def update_attendance_history(content: str | None = None, file: UploadFile = Fil
 
   attendance_history = check_recent_attendance_history(email, True)
 
-  location = check_location(user['location_id'], email)
+  location = check_location(user['location_id'], email, long, lat, True)
 
   payload = {"is_signed_out": True, "updated_at": datetime.now()}
 
