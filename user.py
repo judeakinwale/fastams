@@ -129,8 +129,9 @@ def user_factory(payload: schemas.CreateUser, file: UploadFile | None = File(Non
 # @router.get('/')
 def get_users(limit: int = 1000000000000, page: int = 1, search: str = ''):
   skip = (page - 1) * limit
+  filter = {"$text": {"$search": search}} if search else {}
 
-  users = [get_detailed_user(user) for user in models.User.find()]
+  users = [get_detailed_user(user) for user in models.User.find(filter).limit(limit).skip(skip)]
 
   return {'status': 'success', 'count': len(users), 'data': users}
 
@@ -155,6 +156,10 @@ def create_user(
     "updated_at": datetime.now(),
   }
   print({"payload_dict": payload})
+
+  use_location = utils.is_location_used()
+  if use_location and not payload["location_id"]:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'The location_id is required')
 
   return user_factory(payload, file)
 

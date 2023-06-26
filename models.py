@@ -1,4 +1,6 @@
+import pymongo
 from mongo_db import db
+
 
 User = db['User']
 Location = db['Location']
@@ -6,7 +8,12 @@ AttendanceHistory = db['AttendanceHistory']
 Settings = db['Settings']
 
 
-
+User.create_index([('first_name', "text"), ('last_name', "text"), ('email', "text")], name='text_index')
+# User.drop_indexes()
+# print({"user_indexes": User.index_information()})
+Location.create_index([('name', "text"), ('address', "text"), ('description', "text")], name='text_index')
+Settings.create_index([('opens', "text"), ('closes', "text"), ('open_days', "text")], name='text_index')
+AttendanceHistory.create_index([('email', "text"), ('user_id', "text")], name='text_index')
 
 
 # # from ..config.database import Base

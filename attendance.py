@@ -90,6 +90,10 @@ def save_attendance_image_file(first_name: str = "anon", email: str = "anon@test
 
 
 def get_user_and_email_from_qr_code(content: str | None = None, file: UploadFile = File(None)):
+  # use_qr_code = utils.is_qr_code_used()
+  # if not use_qr_code:
+  #   raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location found for your account. Kindly contact the admin.')
+
   if not (content or file): 
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No QR Code provided. Try again.')
   
@@ -164,6 +168,9 @@ def check_location(location_id: str, email: str, long: str | None = None, lat: s
 # @router.post('/sign-in', status_code=status.HTTP_201_CREATED)
 # def create_attendance_history(payload: schemas.AttendanceHistory, file: UploadFile = File(...)):
 def create_attendance_history(email: str, file: UploadFile = File(...), long: str | None = None, lat: str | None = None):
+  use_facial_recognition = utils.is_facial_recognition_used()
+  if not use_facial_recognition:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Facial Recognition Clockin and Clockout is disabled. Kindly contact the admin.')
 
   user = check_valid_user_for_facial_recognition(email)
 
@@ -201,6 +208,9 @@ def create_attendance_history(email: str, file: UploadFile = File(...), long: st
 @router.patch('/sign-out', response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign Out")
 # @router.post('/sign-out')
 def update_attendance_history(email: str, file: UploadFile = File(...), long: str | None = None, lat: str | None = None):
+  use_facial_recognition = utils.is_facial_recognition_used()
+  if not use_facial_recognition:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Facial Recognition Clockin and Clockout is disabled. Kindly contact the admin.')
 
   user = check_valid_user_for_facial_recognition(email)
 
@@ -221,6 +231,9 @@ def update_attendance_history(email: str, file: UploadFile = File(...), long: st
 # [...] attendance sign in with qr code
 @router.post('/sign-in-qr', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign In with QR")
 def create_attendance_history(content: str | None = None, file: UploadFile = File(None), long: str | None = None, lat: str | None = None):
+  use_qr_code = utils.is_qr_code_used()
+  if not use_qr_code:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'QR Code Clockin and Clockout is disabled. Kindly contact the admin.')
 
   user, email = get_user_and_email_from_qr_code(content, file)
 
@@ -254,6 +267,9 @@ def create_attendance_history(content: str | None = None, file: UploadFile = Fil
 @router.post('/sign-out-qr', response_model=schemas.AttendanceHistoryResponseWithUser, summary="Attendance Sign Out with QR")
 # @router.post('/sign-out-qr')
 def update_attendance_history(content: str | None = None, file: UploadFile = File(None), long: str | None = None, lat: str | None = None):
+  use_qr_code = utils.is_qr_code_used()
+  if not use_qr_code:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'QR Code Clockin and Clockout is disabled. Kindly contact the admin.')
 
   user, email = get_user_and_email_from_qr_code(content, file)
 
@@ -273,9 +289,10 @@ def update_attendance_history(content: str | None = None, file: UploadFile = Fil
 # @router.get('/')
 def get_attendance_histories(db: Session = Depends(get_db), limit: int = 1000000000000, page: int = 1, search: str = ''):
   skip = (page - 1) * limit
-
+  filter = {"$text": {"$search": search}} if search else {}
+  
   # attendance_history = db.query(models.AttendanceHistory).filter(models.AttendanceHistory.email.contains(search)).limit(limit).offset(skip).all()
-  attendance_history = [get_detailed_attendance_history(attendance) for attendance in models.AttendanceHistory.find()]
+  attendance_history = [get_detailed_attendance_history(attendance) for attendance in models.AttendanceHistory.find(filter).limit(limit).skip(skip)]
   print(attendance_history)
   return {'status': 'success', 'count': len(attendance_history), 'data': attendance_history}
 

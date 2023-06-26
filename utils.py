@@ -25,9 +25,20 @@ def get_app_settings():
   return settings
 
 
-def is_location_used():
+def is_location_used() -> bool:
   print("get_app_settings():", get_app_settings())
   return get_app_settings()["use_location"]
+
+
+def is_facial_recognition_used() -> bool:
+  print("get_app_settings():", get_app_settings())
+  return get_app_settings()["use_facial_recognition"]
+
+
+def is_qr_code_used() -> bool:
+  print("get_app_settings():", get_app_settings())
+  return get_app_settings()["use_qr_code"]
+
 
 
 # auth utils

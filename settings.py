@@ -18,8 +18,9 @@ router = APIRouter()
 # @router.get('/')
 def get_settings(limit: int = 1000000000000, page: int = 1, search: str = ''):
   skip = (page - 1) * limit
+  filter = {"$text": {"$search": search}} if search else {}
 
-  settings = [utils.mongo_res(setting) for setting in models.Settings.find()]
+  settings = [utils.mongo_res(setting) for setting in models.Settings.find(filter).limit(limit).skip(skip)]
   return {'status': 'success', 'count': len(settings), 'data': settings}
 
 
