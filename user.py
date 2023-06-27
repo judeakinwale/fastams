@@ -27,12 +27,16 @@ def get_detailed_user(user):
   return user
 
 
-def update_payload_with_password_hash(payload: schemas.CreateUser) -> schemas.CreateUser:
+def update_payload_with_password_hash(payload: schemas.CreateUser, generate_pass: bool = False) -> schemas.CreateUser:
   if "password" in payload:
-    password = payload.pop("password")
+    password = payload.pop("password") or payload["last_name"]
     payload["hashed_password"] = utils.get_password_hash(password)
-    # print(payload)
 
+  if "password" not in payload and generate_pass:
+    password = payload["last_name"]
+    payload["hashed_password"] = utils.get_password_hash(password)
+
+  # print(payload)
   return payload
 
 
@@ -180,7 +184,7 @@ def create_admin_user(
     "last_name": last_name,
     "email": email,
     "location_id": location_id,
-    "password": password,
+    "password": password or last_name,
     "is_admin": True,
     "created_at": datetime.now(),
     "updated_at": datetime.now(),
@@ -188,6 +192,29 @@ def create_admin_user(
   print({"payload_dict": payload})
 
   return user_factory(payload, file)
+
+
+# [...] update user admin status
+@router.patch('/{user_id}/admin', response_model=schemas.UserResponse)
+def update_user(user_id: str, payload: schemas.UpdateUser):
+  existingUser = utils.mongo_res(models.User.find_one({'_id': ObjectId(user_id)}))
+  if not existingUser:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this id: {user_id} found')
+
+  payload = payload.dict(exclude_unset=True)
+  is_admin = payload["is_admin"] if "admin" in payload else True 
+
+  if not existingUser["is_admin"]:
+    payload = {'is_admin': is_admin, 'updated_at': datetime.now()}
+  
+  if not existingUser["password"]:
+    payload = {'is_admin': is_admin, 'updated_at': datetime.now()}
+    payload = update_payload_with_password_hash(payload)
+  
+  print({"payload": payload})
+
+  user = get_detailed_user(models.User.find_one_and_update({'_id': ObjectId(user_id)}, {'$set': payload}, return_document=ReturnDocument.AFTER))
+  return {"status": "success", "data": user}
 
 
 # [...] get user by id
