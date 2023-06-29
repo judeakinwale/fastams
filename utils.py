@@ -360,11 +360,11 @@ def check_face_match(user_face_encoding, attendance_face_encoding):
 
 # location utils
 def check_matching_location(location, long, lat, rad = 0.0005):
-  if not (location.longitude and location.latitude): return True
+  if not (location["longitude"] and location["latitude"]): return True
 
-  long_diff = abs(float(location.longitude) - float(long))
-  lat_diff = abs(float(location.latitude) - float(lat))
-  location_rad = float(location.radius) if location.radius else rad
+  long_diff = abs(float(location["longitude"]) - float(long))
+  lat_diff = abs(float(location["latitude"]) - float(lat))
+  location_rad = float(location["radius"]) if location["radius"] else rad
 
   if long_diff < rad and lat_diff < location_rad:
     return True
