@@ -21,20 +21,21 @@ def get_detailed_attendance_history(attendance_history):
   attendance_history = utils.mongo_res(attendance_history)
 
   user = utils.mongo_res(models.User.find_one({'_id': ObjectId(attendance_history['user_id'])}))
+  # print("user:", user["id"])
   attendance_history['user'] = user
 
   location = utils.mongo_res(models.Location.find_one({'_id': ObjectId(attendance_history['location_id'])}))
   attendance_history['location'] = location
 
-  print("user_id", attendance_history['user_id'], user)
-  print("location_id", attendance_history['location_id'], location)
+  # print("user_id", attendance_history['user_id'], user)
+  # print("location_id", attendance_history['location_id'], location)
 
   return attendance_history
 
 
 def check_valid_user_for_facial_recognition(email: str):
   user = utils.mongo_res(models.User.find_one({"email": email}))
-  if not user:
+  if not (user and user['id']):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
 
   if not user['image']:
@@ -110,7 +111,7 @@ def get_user_and_email_from_qr_code(content: str | None = None, file: UploadFile
 
   email = qr_code_content
   user = utils.mongo_res(models.User.find_one({'email': email}))
-  if not user:
+  if not (user and user['id']):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found')
 
   if file: 
