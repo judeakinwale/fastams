@@ -29,11 +29,11 @@ def get_detailed_user(user):
 
 def update_payload_with_password_hash(payload: schemas.CreateUser, generate_pass: bool = False) -> schemas.CreateUser:
   if "password" in payload:
-    password = payload.pop("password") or payload["last_name"]
+    password = payload.pop("password")
     payload["hashed_password"] = utils.get_password_hash(password)
 
   if "password" not in payload and generate_pass:
-    password = payload["last_name"]
+    password = str(payload["last_name"]).lower()
     payload["hashed_password"] = utils.get_password_hash(password)
 
   # print(payload)
