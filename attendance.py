@@ -19,7 +19,7 @@ router = APIRouter()
 def placeholder_user(email: str = ''):
   user = schemas.User(
     id = "placeholder",
-    first_name = "deleted",
+    first_name = "placeholder",
     last_name = "user",
     email = email if email else "placeholder@email.com"
   )
