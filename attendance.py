@@ -16,13 +16,34 @@ import json
 router = APIRouter()
 
 
+def placeholder_user(email: str = ''):
+  user = schemas.User(
+    id = "placeholder",
+    first_name = "deleted",
+    last_name = "user",
+    email = email if email else "placeholder@email.com"
+  )
+  return user.dict()
+
+def delete_invalid_attendance_history(attendance_history: schemas.AttendanceHistory):
+  deleted_att_his = utils.mongo_res(models.AttendanceHistory.find_one_and_delete({'_id': ObjectId(attendance_history['_id'])}))
+  print({"deleted_att_his": deleted_att_his})
+  return deleted_att_his
+
+
 
 def get_detailed_attendance_history(attendance_history):
   attendance_history = utils.mongo_res(attendance_history)
 
   user = utils.mongo_res(models.User.find_one({'_id': ObjectId(attendance_history['user_id'])}))
-  # print("user:", user["id"])
+
+  if not user: 
+    user = placeholder_user(attendance_history['email'])
+    # delete_invalid_attendance_history(attendance_history)
+    pass
+
   attendance_history['user'] = user
+  # print({"user": user["id"], 'attendance_history_user': attendance_history['user']["id"]})
 
   location = utils.mongo_res(models.Location.find_one({'_id': ObjectId(attendance_history['location_id'])}))
   attendance_history['location'] = location
@@ -294,7 +315,7 @@ def get_attendance_histories(db: Session = Depends(get_db), limit: int = 1000000
   
   # attendance_history = db.query(models.AttendanceHistory).filter(models.AttendanceHistory.email.contains(search)).limit(limit).offset(skip).all()
   attendance_history = [get_detailed_attendance_history(attendance) for attendance in models.AttendanceHistory.find(filter).limit(limit).skip(skip)]
-  print(attendance_history)
+  # print(attendance_history)
   return {'status': 'success', 'count': len(attendance_history), 'data': attendance_history}
 
 

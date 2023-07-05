@@ -63,13 +63,22 @@ def generate_base_64_image(image_path) -> str:
   return encoded_image
 
 
-def send_account_creation_email(email: str, first_name: str, image_path: str):
+def send_account_creation_email(email: str, first_name: str, image_path: str, is_admin = False):
   reciepients = [email]
   subject = f"Attendance QR Code"
+  admin_message = f"""
+  <br>
+  <p>An admin account has been created for you.</p> 
+  <p>To login, use your lastname in lowercase as your password</p>
+  <p>Note: update your password after your first login, using the forgot password link on the login page.</p>
+  """
   message = f"""
   <p>Hello {first_name},</p>
+  {admin_message if is_admin else ""}
   <br>
   <p>Kindly find your attendance QR Code attached.</p>
+  <br>
+  <p>Kindly contact the admin if you encounter any problems.</p>
   """
   image_path = image_path
   image_name = "QR Code"
@@ -79,8 +88,31 @@ def send_account_creation_email(email: str, first_name: str, image_path: str):
   return result
 
 
+# notification for upgrading normal account to admin
+def send_account_upgrade_email(email: str, first_name: str):
+  reciepients = [email]
+  subject = f"Account Upgrade"
+  admin_message = f"""
+  <br>
+  <p>Your account has been upgraded to an admin account.</p> 
+  <p>To login, use your lastname in lowercase as your password</p>
+  <p>Note: update your password after your first login, using the forgot password link on the login page.</p>
+  """
+  message = f"""
+  <p>Hello {first_name},</p>
+  {admin_message}
+  <br>
+  <p>Kindly contact the admin if you encounter any problems.</p>
+  """
+
+  result = utils.send_email(reciepients, subject, message)
+  print("email result: ", result, type(result))
+
+  return result
+
+
 # [...] generic function for creating users
-def user_factory(payload: schemas.CreateUser, file: UploadFile | None = File(None)) -> schemas.UserResponse:
+def user_factory(payload: schemas.CreateUser, file: UploadFile | None = File(None), is_admin = False) -> schemas.UserResponse:
   print({"payload": payload})
 
   email = payload['email']
@@ -126,7 +158,7 @@ def user_factory(payload: schemas.CreateUser, file: UploadFile | None = File(Non
   created_id = models.User.insert_one(payload).inserted_id
   user = get_detailed_user(models.User.find_one({'_id': created_id}))
 
-  send_account_creation_email(email, first_name, user_qr_code)
+  send_account_creation_email(email, first_name, user_qr_code, is_admin)
 
   return {"status": "success", "data": user, "b64_qr_code": encoded_image}
 
@@ -194,7 +226,7 @@ def create_admin_user(
   }
   print({"payload_dict": payload})
 
-  return user_factory(payload, file)
+  return user_factory(payload, file, True)
 
 
 # [...] update user admin status
@@ -217,6 +249,7 @@ def update_user(user_id: str, payload: schemas.UpdateUser):
   print({"payload": payload})
 
   user = get_detailed_user(models.User.find_one_and_update({'_id': ObjectId(user_id)}, {'$set': payload}, return_document=ReturnDocument.AFTER))
+  send_account_upgrade_email(user['email'], user['first_name'])
   return {"status": "success", "data": user}
 
 
@@ -281,5 +314,8 @@ def delete_user(user_id: str):
   user = utils.mongo_res(models.User.find_one_and_delete({'_id': ObjectId(user_id)}))
   if not user:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this id: {user_id} found')
+
+  related_attendance_history = models.AttendanceHistory.delete_many({"user_id": user_id})
+  print({"related_attendance_history": related_attendance_history})
 
   return Response(status_code=status.HTTP_204_NO_CONTENT)
