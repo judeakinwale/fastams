@@ -209,7 +209,7 @@ def create_admin_user(
   first_name: str = Form(...), 
   last_name: str = Form(...),
   email: str = Form(...),
-  password: str = Form(...),
+  password: str = Form(None),
   location_id: str | None = Form(None),
   file: UploadFile | None = File(None), 
   current_user: models.User = Depends(utils.get_current_active_user),
