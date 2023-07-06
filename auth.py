@@ -71,14 +71,15 @@ def forgot_password(email: str):
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No user with this email: {email} found') # change the message
 
+  token = utils.generate_unique_token()
   payload = {
-    'reset_password_token': utils.generate_unique_token(),
+    'reset_password_token': token,
     'reset_token_expire': datetime.now() + timedelta(hours=1),
     'updated_at': datetime.now(),
   }  
   user = utils.mongo_res(models.User.find_one_and_update({'_id': ObjectId(user["id"])}, {'$set': payload}, return_document=ReturnDocument.AFTER))
 
-  url = "https://pyams.azurewebsites.net/"
+  url = f"https://aaranoams.azurewebsites.net/reset-password/{token}"
   reciepients = [email]
   subject = f"Forgot Password"
   message = f"""
