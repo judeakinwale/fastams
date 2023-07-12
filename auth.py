@@ -96,7 +96,7 @@ def forgot_password(email: str):
 # [...] reset password
 @router.post('/reset-password/{reset_token}', response_model=schemas.ResetPasswordResponse)
 def reset_password(reset_token: str, payload: schemas.ResetPassword):
-  user = utils.mongo_res(models.User.find({"reset_password_token": reset_token, "reset_token_expire": {"$lte": datetime.now()}}))
+  user = utils.mongo_res(models.User.find_one({"reset_password_token": reset_token, "reset_token_expire": {"$gte": datetime.now()}}))
 
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Invalid password reset request.')
