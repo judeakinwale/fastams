@@ -83,7 +83,7 @@ def forgot_password(email: str):
   reciepients = [email]
   subject = f"Forgot Password"
   message = f"""
-  <p>Hello {user.first_name},</p>
+  <p>Hello {user["first_name"]},</p>
   <br>
   <p>You have requested to reset your password. If you didn't make this request kindly ignore.</p>
   <p>Kindly reset your password at this <a href='{url}'>link</a>.</p>"""
