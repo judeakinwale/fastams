@@ -214,6 +214,7 @@ def create_attendance_history(email: str, file: UploadFile = File(...), long: st
     "face_encoding": face_check_result["face_encoding_str"], 
     "is_signed_in": True,
     "is_signed_out": False,
+    "is_signed_in_late": utils.is_late_sign_in(datetime.now()),
     "created_at": datetime.now(),
     "updated_at": datetime.now(),
   }  
@@ -242,7 +243,12 @@ def update_attendance_history(email: str, file: UploadFile = File(...), long: st
 
   face_check_result = check_face_using_facial_recognition(user, file)
 
-  payload = {"is_signed_out": True, "updated_at": datetime.now()}
+  payload = {
+    "is_signed_out": True,
+    "is_signed_out_early": utils.is_early_sign_out(datetime.now()),
+    "is_signed_out_overtime": utils.is_overtime_sign_out(datetime.now()),
+    "updated_at": datetime.now(),
+  }
 
   attendance_history = get_detailed_attendance_history(models.AttendanceHistory.find_one_and_update({'_id': ObjectId(attendance_history["id"])}, {'$set': payload}, return_document=ReturnDocument.AFTER))
   return {"status": "success", "data": attendance_history}
@@ -274,6 +280,7 @@ def create_attendance_history(content: str | None = None, file: UploadFile = Fil
     "qr_code_content": email, 
     "is_signed_in": True,
     "is_signed_out": False,
+    "is_signed_in_late": utils.is_late_sign_in(datetime.now()),
     "created_at": datetime.now(),
     "updated_at": datetime.now(),
   }  
@@ -299,7 +306,12 @@ def update_attendance_history(content: str | None = None, file: UploadFile = Fil
 
   location = check_location(user['location_id'], email, long, lat, True)
 
-  payload = {"is_signed_out": True, "updated_at": datetime.now()}
+  payload = {
+    "is_signed_out": True,
+    "is_signed_out_early": utils.is_early_sign_out(datetime.now()),
+    "is_signed_out_overtime": utils.is_overtime_sign_out(datetime.now()),
+    "updated_at": datetime.now()
+  }
 
   attendance_history = get_detailed_attendance_history(models.AttendanceHistory.find_one_and_update({'_id': ObjectId(attendance_history["id"])}, {'$set': payload}, return_document=ReturnDocument.AFTER))
   return {"status": "success", "data": attendance_history}
@@ -324,7 +336,11 @@ def get_attendance_histories(db: Session = Depends(get_db), limit: int = 1000000
 # @router.post('/', status_code=status.HTTP_201_CREATED)
 def create_attendance_history(payload: schemas.BaseAttendanceHistory):
   payload = payload.dict(exclude_unset=True)
-  payload.update({'created_at': datetime.now(), 'updated_at': datetime.now()})
+  payload.update({
+    'is_signed_in_late': utils.is_late_sign_in(datetime.now()),
+    'created_at': datetime.now(),
+    'updated_at': datetime.now(),
+  })
   print({"payload": payload})
 
   created_id = models.AttendanceHistory.insert_one(payload).inserted_id
@@ -348,7 +364,11 @@ def get_attendance_history(attendance_history_id: str):
 @router.patch('/{attendance_history_id}', response_model=schemas.AttendanceHistoryResponseWithUser)
 def update_attendance_history(attendance_history_id: str, payload: schemas.UpdateAttendanceHistory):
   payload = payload.dict(exclude_unset=True)
-  payload.update({'updated_at': datetime.now()})
+  payload.update({
+    'is_signed_out_early': utils.is_early_sign_out(datetime.now()),
+    'is_signed_out_overtime': utils.is_overtime_sign_out(datetime.now()),
+    'updated_at': datetime.now(),
+  })
   print({"payload": payload})
 
   attendance_history = get_detailed_attendance_history(models.AttendanceHistory.find_one_and_update({'_id': ObjectId(attendance_history_id)}, {'$set': payload}, return_document=ReturnDocument.AFTER))

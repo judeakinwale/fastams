@@ -44,6 +44,9 @@ class AttendanceHistory(BaseAttendanceHistory):
   qr_code_content: str | None = None
   is_signed_in: bool = False
   is_signed_out: bool = False
+  is_signed_in_late: bool = False
+  is_signed_out_early: bool = False
+  is_signed_out_overtime: bool = False
   created_at: datetime | None = None
   updated_at: datetime | None = None
 
@@ -68,6 +71,7 @@ class BaseUser(BaseModel):
   location_id: str | None = None
   is_admin: bool = False
   is_active: bool = True
+  is_on_leave: bool = False
   updated_at: datetime | None = datetime.now()
 
   class Config:
@@ -185,8 +189,10 @@ class Settings(BaseModel):
   use_facial_recognition: bool = True
   use_qr_code: bool = True
   use_location: bool = False
-  opens: str | None = "8:00"
+  opens: str | None = "08:00"
   closes: str | None = "16:00"
+  opening_window: int = 15  # in minutes
+  closing_window: int = 15  # in minutes
   open_days: str | None = dumps(["mon", "tue", "wed", "thur", "fri"]) # json string
   is_active: bool = True
   created_at: datetime | None = datetime.now()

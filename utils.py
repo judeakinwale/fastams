@@ -1,5 +1,5 @@
 import os
-from typing import Annotated
+from typing import Annotated, Dict
 from fastapi import Depends, HTTPException, status, APIRouter, Response, Request, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -16,13 +16,15 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from models import User
 from config import JWTSettings
+import schemas
 
 
-def get_app_settings():
+def get_app_settings() -> schemas.Settings:
   settings = mongo_res(models.Settings.find_one())
   if not settings:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Settings not found. Setup the site settings first!')
-  return settings
+  # return settings
+  return schemas.Settings(**settings).dict()
 
 
 def is_location_used() -> bool:
@@ -38,6 +40,46 @@ def is_facial_recognition_used() -> bool:
 def is_qr_code_used() -> bool:
   print("get_app_settings():", get_app_settings())
   return get_app_settings()["use_qr_code"]
+
+
+def get_opening_time() -> Dict[str, datetime]:
+  opens = get_app_settings()["opens"]
+  window = get_app_settings()["opening_window"]
+
+  opens_date = simple_time_to_datetime(opens)
+  return get_start_default_end_datetime(opens_date, window) 
+
+
+def get_closing_time() -> Dict[str, datetime]:
+  closes = get_app_settings()["closes"]
+  window = get_app_settings()["closing_window"]
+
+  closes_date = simple_time_to_datetime(closes)
+  return get_start_default_end_datetime(closes_date, window) 
+
+
+def is_late_sign_in(dt: datetime) -> bool:
+  usable_dt = simplify_date_time(dt)
+  
+  if usable_dt > get_opening_time()["end"]:
+    return True
+  return False
+
+
+def is_early_sign_out(dt: datetime) -> bool:
+  usable_dt = simplify_date_time(dt)
+  
+  if usable_dt < get_closing_time()["start"]:
+    return True
+  return False
+
+
+def is_overtime_sign_out(dt: datetime) -> bool:
+  usable_dt = simplify_date_time(dt)
+  
+  if usable_dt > get_closing_time()["default"]:
+    return True
+  return False
 
 
 
@@ -370,6 +412,28 @@ def check_matching_location(location, long, lat, rad = 0.0005):
     return True
   return False
 # location utils
+
+
+# time utils
+
+# convert_current_datetime_to %H:%M datetime
+def simplify_date_time(dt: datetime, format: str = "%H:%M") -> datetime:
+  res = dt.strftime(format)
+  return simple_time_to_datetime(res, format)
+
+
+# convert %H:%M string to datetime
+def simple_time_to_datetime(time: str = '08:00', format: str = "%H:%M") -> datetime:
+  res = datetime.now().strptime(time, format)
+  return res
+
+
+def get_start_default_end_datetime(dt: datetime, window: int = 15) -> Dict[str, datetime]:
+  start = dt - timedelta(minutes=window)
+  end = dt + timedelta(minutes=window)
+  return {"start": start, "default": dt, "end": end}
+
+# time utils
 
 
 # fix response from mongo db before display
