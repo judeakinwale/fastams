@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from fastapi import Depends, HTTPException, status, APIRouter, Response, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from sqlite_database import get_db, Base # for sqlite db
@@ -173,6 +173,42 @@ def get_users(limit: int = 1000000000000, page: int = 1, search: str = ''):
   users = [get_detailed_user(user) for user in models.User.find(filter).limit(limit).skip(skip)]
 
   return {'status': 'success', 'count': len(users), 'data': users}
+
+
+# [...] get all absent users
+@router.get('/absent', response_model=schemas.ListUserResponse)
+# @router.get('/')
+def get_absent_users(date: datetime = datetime.now(), limit: int = 1000000000000, page: int = 1, search: str = ''):
+  skip = (page - 1) * limit
+  filter = {"$text": {"$search": search}} if search else {}
+
+
+  def check_date_attendance(attendance_history: List[schemas.AttendanceHistory] = [], dt: datetime = datetime.now()):
+    current_date = dt.date()
+
+    for attendance in attendance_history:
+      if attendance["created_at"].date() == current_date:
+        return True
+    return False
+
+
+  def filter_absent_users(users: List[schemas.User], dt: datetime = datetime.now()):
+    absent_users = []
+    for user in users:
+      user = schemas.User(**user).dict()
+      print(user)
+      if user["is_on_leave"] == True: continue
+      if not check_date_attendance(user["attendance_history"]):
+        absent_users.append(user)
+    
+    return absent_users
+
+
+  users = [get_detailed_user(user) for user in models.User.find(filter).limit(limit).skip(skip)]
+  absent_user = filter_absent_users(users, date)
+
+  # return {'status': 'success', 'count': len(users), 'data': users}
+  return {'status': 'success', 'count': len(absent_user), 'data': absent_user}
 
 
 # [...] create user
