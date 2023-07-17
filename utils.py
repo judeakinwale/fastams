@@ -401,7 +401,7 @@ def check_face_match(user_face_encoding, attendance_face_encoding):
 
 
 # location utils
-def check_matching_location(location, long, lat, rad = 0.0005):
+def check_matching_location(location, long, lat, rad = 0.005):
   if not (location["longitude"] and location["latitude"]): return True
 
   long_diff = abs(float(location["longitude"]) - float(long))
