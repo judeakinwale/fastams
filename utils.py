@@ -409,7 +409,7 @@ def check_matching_location(location, long, lat, rad = 0.005):
   # location_rad = float(location["radius"]) if location["radius"] else rad
   location_rad = ((float(location["radius"])/111139) * 2) if location["radius"] else rad
 
-  if long_diff < location_rad and lat_diff < location_rad:
+  if long_diff <= location_rad and lat_diff <= location_rad:
     return True
   return False
 # location utils
