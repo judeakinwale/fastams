@@ -23,8 +23,8 @@ jobs:
       run: docker build . --file Dockerfile --tag fastams:lban
       
     - name: Tag the Docker Image
-      run: docker tag fastams osreglban.azurecr.io/fastams
+      run: docker tag fastams:lban osreglban.azurecr.io/fastams:lban
       
     - name: Push the Docker Image to Azure Container Registry
-      run: docker push osreglban.azurecr.io/fastams
+      run: docker push osreglban.azurecr.io/fastams:lban
   
