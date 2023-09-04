@@ -150,7 +150,7 @@ def check_recent_attendance_history(email: str, is_sign_out: bool = False):
     'email': email,
     'created_at': {'$gte': today, '$lte': tomorrow},
     'is_signed_in': True,
-    'is_signed_out': False,
+    # 'is_signed_out': False,
 
   }))
 
@@ -158,10 +158,15 @@ def check_recent_attendance_history(email: str, is_sign_out: bool = False):
     # throw error if signing out and no attendance history found
     if not attendance_history:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this email: {email} found')
-    return attendance_history
+
+
+  if attendance_history and attendance_history.is_signed_out:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have already signed out')
 
   if attendance_history:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have signed in with this email: {email}. Sign out instead')
+
+  return attendance_history
 
 
 def check_location(location_id: str, email: str, long: str | None = None, lat: str | None = None, is_sign_out: bool = False):  

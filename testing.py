@@ -31,60 +31,60 @@
 #   print(True)
 # # print(False)
   
-import os
+# import os
 
 
-def send_email(reciepients, subject, message, image_path = None, cc = []):
-  import smtplib
-  from email.mime.text import MIMEText
-  from email.mime.image import MIMEImage
-  from email.mime.multipart import MIMEMultipart
+# def send_email(reciepients, subject, message, image_path = None, cc = []):
+#   import smtplib
+#   from email.mime.text import MIMEText
+#   from email.mime.image import MIMEImage
+#   from email.mime.multipart import MIMEMultipart
   
-  email = os.environ['SMTP_EMAIL'] or 'Bizsupport@lotusbetaanalytics.com'
-  password = os.environ['SMTP_PASSWORD']
-  host = os.environ['SMTP_HOST'] or 'smtp.office365.com'
-  port = os.environ['SMTP_PORT'] or 587
+#   email = os.environ['SMTP_EMAIL']
+#   password = os.environ['SMTP_PASSWORD']
+#   host = os.environ['SMTP_HOST']
+#   port = os.environ['SMTP_PORT']
 
-  # Create a MIME multipart message
-  msg = MIMEMultipart()
-  msg['From'] = email
-  msg['To'] = ', '.join(reciepients)
-  msg['Cc'] = ', '.join(cc)
-  msg['Subject'] = subject
+#   # Create a MIME multipart message
+#   msg = MIMEMultipart()
+#   msg['From'] = email
+#   msg['To'] = ', '.join(reciepients)
+#   msg['Cc'] = ', '.join(cc)
+#   msg['Subject'] = subject
 
-  # Attach the message to the MIME message
-  msg.attach(MIMEText(message, 'plain'))
+#   # Attach the message to the MIME message
+#   msg.attach(MIMEText(message, 'plain'))
 
-  # Attach the image
-  if image_path:
-    with open(image_path, 'rb') as f:
-      img_data = f.read()
-      image = MIMEImage(img_data, name='image.jpg')
-      msg.attach(image)
+#   # Attach the image
+#   if image_path:
+#     with open(image_path, 'rb') as f:
+#       img_data = f.read()
+#       image = MIMEImage(img_data, name='image.jpg')
+#       msg.attach(image)
 
-  # Connect to the SMTP server 
-  server = smtplib.SMTP(host, port)
-  server.starttls()
+#   # Connect to the SMTP server 
+#   server = smtplib.SMTP(host, port)
+#   server.starttls()
 
-  # Login to your account
-  server.login(email, password)
+#   # Login to your account
+#   server.login(email, password)
 
-  all_reciepients = reciepients + cc
+#   all_reciepients = reciepients + cc
 
-  # Send the email
-  server.sendmail(email, all_reciepients, msg.as_string())
+#   # Send the email
+#   server.sendmail(email, all_reciepients, msg.as_string())
 
-  # Close the connection
-  server.quit()
+#   # Close the connection
+#   server.quit()
 
 
 
-# Provide the necessary information
-email = 'your_email@gmail.com'
-password = 'your_password'
-reciepients = ['recipient_email@example.com']
-subject = 'Hello from Python!'
-message = 'This is a test email sent using Python.'
+# # Provide the necessary information
+# email = 'your_email@gmail.com'
+# password = 'your_password'
+# reciepients = ['recipient_email@example.com']
+# subject = 'Hello from Python!'
+# message = 'This is a test email sent using Python.'
 
-# Call the function to send the email
-send_email(reciepients, subject, message)
+# # Call the function to send the email
+# send_email(reciepients, subject, message)
