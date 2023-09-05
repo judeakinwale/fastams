@@ -155,7 +155,7 @@ def check_recent_attendance_history(email: str, is_sign_out: bool = False):
   }))
 
   if attendance_history and attendance_history["is_signed_out"]:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have already signed out')
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You have already clocked out')
 
   if is_sign_out:
     # throw error if signing out and no attendance history found
