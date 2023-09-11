@@ -222,7 +222,7 @@ def create_attendance_history(email: str, file: UploadFile = File(...), long: st
     "is_signed_out": False,
     "is_signed_in_late": utils.is_late_sign_in(datetime.now()),
     "created_at": datetime.now(),
-    "updated_at": datetime.now(),
+    # "updated_at": datetime.now(),
   }  
 
   created_id = models.AttendanceHistory.insert_one(payload).inserted_id
@@ -288,7 +288,7 @@ def create_attendance_history(content: str | None = None, file: UploadFile = Fil
     "is_signed_out": False,
     "is_signed_in_late": utils.is_late_sign_in(datetime.now()),
     "created_at": datetime.now(),
-    "updated_at": datetime.now(),
+    # "updated_at": datetime.now(),
   }  
 
   created_id = models.AttendanceHistory.insert_one(payload).inserted_id
@@ -316,7 +316,7 @@ def update_attendance_history(content: str | None = None, file: UploadFile = Fil
     "is_signed_out": True,
     "is_signed_out_early": utils.is_early_sign_out(datetime.now()),
     "is_signed_out_overtime": utils.is_overtime_sign_out(datetime.now()),
-    "updated_at": datetime.now()
+    "updated_at": datetime.now(),
   }
 
   attendance_history = get_detailed_attendance_history(models.AttendanceHistory.find_one_and_update({'_id': ObjectId(attendance_history["id"])}, {'$set': payload}, return_document=ReturnDocument.AFTER))
