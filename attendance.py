@@ -290,10 +290,11 @@ def create_attendance_history(content: str | None = None, file: UploadFile = Fil
     "created_at": datetime.now(),
     # "updated_at": datetime.now(),
   }  
+  # print({"payload": payload})
 
   created_id = models.AttendanceHistory.insert_one(payload).inserted_id
   attendance_history = get_detailed_attendance_history(models.AttendanceHistory.find_one({'_id': ObjectId(created_id)}))
-  print({"attendance_history": attendance_history})
+  # print({"attendance_history": attendance_history})
 
   return {"status": "success", "data": attendance_history}
 
