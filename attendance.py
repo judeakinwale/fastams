@@ -390,6 +390,6 @@ def update_attendance_history(attendance_history_id: str, payload: schemas.Updat
 def delete_attendance_history(attendance_history_id: str):
   attendance_history = utils.mongo_res(models.AttendanceHistory.find_one_and_delete({'_id': ObjectId(attendance_history_id)}))
   if not attendance_history:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this id: {id} found')
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No attendance_history with this id: {attendance_history_id} found')
 
   return Response(status_code=status.HTTP_204_NO_CONTENT)
