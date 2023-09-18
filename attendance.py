@@ -182,7 +182,7 @@ def check_location(location_id: str, email: str, long: str | None = None, lat: s
     if not location:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'No location for user with this email: {email} found. Kindly contact the admin.')
 
-    if not (long or lat):
+    if (not (long or lat)) or (long == "undefined" or lat == "undefined"):
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'{attendance_type} location not provided!')
     
     is_location_match = utils.check_matching_location(location, float(long), float(lat))
