@@ -31,7 +31,7 @@ def get_locations(limit: int = 1000000000000, page: int = 1, search: str = ''):
   skip = (page - 1) * limit
   filter = {"$text": {"$search": search}} if search else {}
 
-  locations = [get_detailed_location(location) for location in models.Location.find(filter).limit(limit).skip(skip)]
+  locations = [get_detailed_location(location) for location in models.Location.find(filter).limit(limit).skip(skip).sort("created_at", -1)]
   # print(locations)
   
   return {'status': 'success', 'count': len(locations), 'data': locations}

@@ -170,7 +170,7 @@ def get_users(limit: int = 1000000000000, page: int = 1, search: str = ''):
   skip = (page - 1) * limit
   filter = {"$text": {"$search": search}} if search else {}
 
-  users = [get_detailed_user(user) for user in models.User.find(filter).limit(limit).skip(skip)]
+  users = [get_detailed_user(user) for user in models.User.find(filter).limit(limit).skip(skip).sort("created_at", -1)]
 
   return {'status': 'success', 'count': len(users), 'data': users}
 

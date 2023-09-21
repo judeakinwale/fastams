@@ -189,6 +189,8 @@ def check_location(location_id: str, email: str, long: str | None = None, lat: s
     if not is_location_match:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'You are not allowed to {attendance_type} from this location')
 
+  return location
+
 
 
 # [...] attendance sign in
@@ -333,7 +335,7 @@ def get_attendance_histories(db: Session = Depends(get_db), limit: int = 1000000
   filter = {"$text": {"$search": search}} if search else {}
   
   # attendance_history = db.query(models.AttendanceHistory).filter(models.AttendanceHistory.email.contains(search)).limit(limit).offset(skip).all()
-  attendance_history = [get_detailed_attendance_history(attendance) for attendance in models.AttendanceHistory.find(filter).limit(limit).skip(skip)]
+  attendance_history = [get_detailed_attendance_history(attendance) for attendance in models.AttendanceHistory.find(filter).limit(limit).skip(skip).sort("created_at", -1)]
   # print(attendance_history)
   return {'status': 'success', 'count': len(attendance_history), 'data': attendance_history}
 
