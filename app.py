@@ -7,10 +7,13 @@ from starlette.responses import FileResponse, HTMLResponse
 # from sqlite_database import engine # for sqlite db
 # from database import engine # for postgres db
 import models, user, location, attendance, auth, settings
+from mongo_db import client, db
 
 # models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+client
+db
 
 # from fastapi.security import HTTPBearer
 # security = HTTPBearer()
@@ -58,8 +61,16 @@ app.mount(
 
 # static frontend
 # Render index.html
-@app.get("/{full_path:path}")
-async def root(full_path: str):
+@app.get("/")
+async def index():
+    return FileResponse("./static/index.html")
+    # return HTMLResponse("static/index.html")
+
+
+# Render index.html
+# Handle for extra url paths in index.html and page reloads
+@app.get("/{full_path:path}/")
+async def root(full_path: str | None = None):
     return FileResponse("./static/index.html")
     # return HTMLResponse("static/index.html")
 
