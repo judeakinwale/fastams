@@ -17,10 +17,12 @@ from datetime import timedelta
 
 
 class MongoSettings(BaseSettings):
-  MONGO_URI: str
+    MONGO_URI: str
+    ADMIN_PASS: str
 
-  class Config:
-    env_file = '.env'
+    class Config:
+        env_file = ".env"
+
 
 mongo_settings = MongoSettings()
 

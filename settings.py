@@ -1,3 +1,4 @@
+import os
 from fastapi import (
     # Depends,
     HTTPException,
@@ -19,6 +20,7 @@ from pymongo import ReturnDocument
 import models
 import schemas
 import utils
+from config import mongo_settings
 
 router = APIRouter()
 
@@ -50,29 +52,33 @@ def create_settings(payload: schemas.Settings):
     payload.update({"created_at": datetime.now(), "updated_at": datetime.now()})
     print({"payload": payload})
 
-    userPayload = {
-        "first_name": "admin",
-        "last_name": "admin",
-        "email": "admin@admin.com",
-        "hashed_password": utils.get_password_hash("admin"),
-        "is_admin": True,
-        "is_active": True,
-        "created_at": datetime.now(),
-        "updated_at": datetime.now(),
-    }
+    user = models.User.find_one({"is_admin": True})
+    if not user:
+        adminPass = mongo_settings.ADMIN_PASS or os.environ["ADMIN_PASS"]
+        if adminPass:
+            userPayload = {
+                "first_name": "admin",
+                "last_name": "admin",
+                "email": "admin@admin.com",
+                "hashed_password": utils.get_password_hash(adminPass),
+                "is_admin": True,
+                "is_active": True,
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
+            }
+            user = utils.mongo_res(
+                models.User.find_one_and_update(
+                    {"email": "admin@admin.com"},
+                    {"$set": userPayload},
+                    return_document=ReturnDocument.AFTER,
+                    upsert=True,
+                )
+            )
 
     # ensure only one setting is created
     settings = utils.mongo_res(
         models.Settings.find_one_and_update(
             {}, {"$set": payload}, return_document=ReturnDocument.AFTER, upsert=True
-        )
-    )
-    user = utils.mongo_res(
-        models.User.find_one_and_update(
-            {"email": "admin@admin.com"},
-            {"$set": userPayload},
-            return_document=ReturnDocument.AFTER,
-            upsert=True,
         )
     )
 
