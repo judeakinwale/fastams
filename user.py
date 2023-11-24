@@ -18,11 +18,14 @@ router = APIRouter()
 def get_detailed_user(user):
   user = utils.mongo_res(user)
 
-  attendance_history = [utils.mongo_res(attendance) for attendance in models.AttendanceHistory.find({'email': user['email']})]
-  user['attendance_history'] = attendance_history
+  try:
+    attendance_history = [utils.mongo_res(attendance) for attendance in models.AttendanceHistory.find({'email': user['email']})]
+    user['attendance_history'] = attendance_history
 
-  location = utils.mongo_res(models.Location.find_one({'_id': user['location_id']}))
-  user['location'] = location
+    location = utils.mongo_res(models.Location.find_one({'_id': user['location_id']}))
+    user['location'] = location
+  except Exception as e:
+    print(e)
 
   return user
 

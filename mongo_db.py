@@ -6,4 +6,5 @@ from config import mongo_settings
 client = MongoClient(mongo_settings.MONGO_URI or os.environ['MONGO_URI'])
 
 # Access the database
-db = client["lbanams"]
+db = client["impactams"]
+# db = client["lbanams"]
