@@ -135,7 +135,7 @@ def create_access_token(user: User):
     # expires_delta = timedelta(minutes=jwt_settings.access_token_expire_minutes)
     expires_delta = timedelta(days=jwt_settings.access_token_expire)
     to_encode = {"id": str(user["id"]), "exp": datetime.utcnow() + expires_delta}
-    encoded_jwt = jwt.encode(to_encode, jwt_settings.secret_key, algorithm=jwt_settings.algorithm)
+    encoded_jwt = jwt.encode(to_encode, jwt_settings.SECRET_KEY, algorithm=jwt_settings.algorithm)
     return encoded_jwt
 
 
@@ -147,7 +147,7 @@ def decode_token_id(request: Request):
   auth = request.headers.get("Authentication")
   token = auth.split(" ")[1]
   print({"auth": auth, "token": token})
-  payload = jwt.decode(token, jwt_settings.secret_key, algorithms=[jwt_settings.algorithm])
+  payload = jwt.decode(token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm])
   print({"token": token, "payload": payload})
   user_id = payload.get("id")
   if user_id is None:
@@ -158,7 +158,7 @@ def decode_token_id(request: Request):
 def get_current_active_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
   try:      
     token = credentials.credentials
-    payload = jwt.decode(token, jwt_settings.secret_key, algorithms=[jwt_settings.algorithm])
+    payload = jwt.decode(token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm])
     print({"token": token, "payload": payload})
     user_id = payload.get("id")
     if user_id is None:
@@ -180,7 +180,7 @@ def try_get_current_active_user(credentials: HTTPAuthorizationCredentials | None
   print(credentials.credentials)
   try:      
     token = credentials.credentials
-    payload = jwt.decode(token, jwt_settings.secret_key, algorithms=[jwt_settings.algorithm])
+    payload = jwt.decode(token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm])
     print({"token": token, "payload": payload})
     user_id = payload.get("id")
     if user_id is None:
@@ -202,7 +202,7 @@ def try_get_current_active_user(credentials: HTTPAuthorizationCredentials | None
 def get_current_oauth2_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         print({"token": token, "oauth2_scheme": oauth2_scheme})
-        payload = jwt.decode(token, jwt_settings.secret_key, algorithms=[jwt_settings.algorithm])
+        payload = jwt.decode(token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm])
         user_id = payload.get("id")
         print({"user_id": user_id, "payload": payload})
 

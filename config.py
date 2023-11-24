@@ -1,3 +1,4 @@
+import os
 from pydantic import BaseSettings
 from datetime import timedelta
 
@@ -18,7 +19,7 @@ from datetime import timedelta
 
 class MongoSettings(BaseSettings):
     MONGO_URI: str
-    ADMIN_PASS: str
+    ADMIN_PASS: str | None = None
 
     class Config:
         env_file = ".env"
@@ -27,8 +28,13 @@ class MongoSettings(BaseSettings):
 mongo_settings = MongoSettings()
 
 
-class JWTSettings:
+class JWTSettings(BaseSettings):
     algorithm = "HS256"
-    secret_key = "mysecretkey"
-    access_token_expire = 30
-    access_token_expire_minutes = 30
+    SECRET_KEY: str = os.environ.get("SECRET_KEY") or "."
+    access_token_expire: int = os.environ.get("TOKEN_EXPIRE") or 30
+    access_token_expire_minutes: int = os.environ.get("TOKEN_EXPIRE_MINUTES") or 30
+
+    class Config:
+        env_file = ".env"
+
+jwt_settings = JWTSettings()
