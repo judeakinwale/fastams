@@ -401,16 +401,69 @@ def check_face_match(user_face_encoding, attendance_face_encoding):
 
 
 # location utils
+from math import radians, sin, cos, sqrt, atan2
+
+def calculate_new_coordinates(latitude, longitude, distance):
+    # Radius of the Earth in meters
+    earth_radius = 6371000.0
+
+    # Convert latitude and longitude from degrees to radians
+    lat1 = radians(latitude)
+    lon1 = radians(longitude)
+
+    # Calculate the angular distance in radians
+    angular_distance = distance / earth_radius
+
+    # Calculate the new latitude and longitude
+    lat2 = lat1 + angular_distance
+
+    # Formula for longitude depends on latitude
+    lon2 = lon1 + angular_distance / cos(lat1)
+
+    # Convert back from radians to degrees
+    new_latitude = degrees(lat2)
+    new_longitude = degrees(lon2)
+
+    return new_latitude, new_longitude
+
+def degrees(radians):
+    return radians * (180 / 3.14159265358979323846)
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    # Radius of the Earth in meters
+    earth_radius = 6371000.0
+
+    # Convert latitude and longitude from degrees to radians
+    lat1_rad, lon1_rad = radians(lat1), radians(lon1)
+    lat2_rad, lon2_rad = radians(lat2), radians(lon2)
+
+    # Calculate the differences in coordinates
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+
+    # Haversine formula
+    a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    # Calculate the distance
+    distance = earth_radius * c
+
+    return distance
+
 def check_matching_location(location, long, lat, rad = 0.005):
   if not (location["longitude"] and location["latitude"]): return True
 
   long_diff = abs(float(location["longitude"]) - float(long))
   lat_diff = abs(float(location["latitude"]) - float(lat))
   # location_rad = float(location["radius"]) if location["radius"] else rad
-  location_rad = ((float(location["radius"])/111139) * 2) if location["radius"] else rad
+  # location_rad = ((float(location["radius"])/111139) * 2) if location["radius"] else rad
 
-  if long_diff <= location_rad and lat_diff <= location_rad:
+  distance = haversine_distance(float(location["latitude"]), float(location["longitude"]), lat, long)
+  if distance <= float(location["radius"]):
     return True
+
+  # if long_diff <= location_rad and lat_diff <= location_rad:
+  #   return True
   return False
 # location utils
 
