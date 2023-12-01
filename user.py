@@ -155,7 +155,9 @@ def user_factory(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Email Provided"
         )
 
-    db_user = utils.mongo_res(models.User.find_one({"email": email}))
+    db_user = utils.mongo_res(
+        models.User.find_one({"email": {"$regex": email, "$options": "i"}})
+    )
     if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
@@ -218,7 +220,7 @@ def get_users(limit: int = 1000000000000, page: int = 1, search: str = ""):
     skip = (page - 1) * limit
     filter = {"$text": {"$search": search}} if search else {}
 
-    print(jwt_settings.SECRET_KEY)
+    # print(jwt_settings.SECRET_KEY)
 
     users = [
         get_detailed_user(user)
@@ -341,7 +343,7 @@ def create_admin_user(
 
 # [...] update user admin status
 @router.patch("/{user_id}/admin", response_model=schemas.UserResponse)
-def update_user(user_id: str, payload: schemas.UpdateUser):
+def update_user_admin(user_id: str, payload: schemas.UpdateUser):
     existingUser = utils.mongo_res(models.User.find_one({"_id": ObjectId(user_id)}))
     if not existingUser:
         raise HTTPException(
@@ -385,6 +387,21 @@ def get_user(user_id: str):
     return {"status": "success", "data": user}
 
 
+# [...] get user by email
+@router.get("/email/{email}", response_model=schemas.UserResponse)
+def get_user_by_email(email: str):
+    user = get_detailed_user(
+        models.User.find_one({"email": {"$regex": email, "$options": "i"}})
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No user with this email: {email} found",
+        )
+
+    return {"status": "success", "data": user}
+
+
 # [...] edit user by id
 @router.patch("/{user_id}", response_model=schemas.UserResponse)
 def update_user(user_id: str, payload: schemas.UpdateUser):
@@ -412,7 +429,7 @@ def update_user(user_id: str, payload: schemas.UpdateUser):
 
 # [...] update user photo by user id
 @router.patch("/{user_id}/image", response_model=schemas.UserResponse)
-def update_user(user_id: str, file: UploadFile = File(...)):
+def update_user_photo(user_id: str, file: UploadFile = File(...)):
     existingUser = utils.mongo_res(models.User.find_one({"_id": ObjectId(user_id)}))
     if not existingUser:
         raise HTTPException(

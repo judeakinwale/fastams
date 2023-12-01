@@ -109,7 +109,7 @@ def get_settings(settings_id: str | None = None):
 @router.patch("/{settings_id}", response_model=schemas.SettingsResponse)
 @router.patch("/default", response_model=schemas.SettingsResponse)
 # @router.patch('/{settings_id}')
-def update_settings(settings_id: str, payload: schemas.Settings):
+def update_settings(payload: schemas.Settings, settings_id: str | None = None):
     payload = payload.dict(exclude_unset=True)
     payload.update({"updated_at": datetime.now()})
     print({"payload": payload})

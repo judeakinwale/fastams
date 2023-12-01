@@ -1,9 +1,23 @@
 import os
 from typing import Annotated, Dict
-from fastapi import Depends, HTTPException, status, APIRouter, Response, Request, UploadFile, File
-from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import (
+    Depends,
+    HTTPException,
+    status,
+    APIRouter,
+    Response,
+    Request,
+    UploadFile,
+    File,
+)
+from fastapi.security import (
+    OAuth2PasswordBearer,
+    HTTPBearer,
+    HTTPAuthorizationCredentials,
+)
 from sqlalchemy.orm import Session
-from sqlite_database import get_db, Base # for sqlite db
+from sqlite_database import get_db, Base  # for sqlite db
+
 # from database import get_db, Base # for postgres db
 from bson.objectid import ObjectId
 import face_recognition
@@ -20,67 +34,74 @@ import schemas
 
 
 def get_app_settings() -> schemas.Settings:
-  settings = mongo_res(models.Settings.find_one())
-  if not settings:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Settings not found. Setup the site settings first!')
-  # return settings
-  return schemas.Settings(**settings).dict()
+    settings = mongo_res(models.Settings.find_one())
+    if not settings:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Settings not found. Setup the site settings first!",
+        )
+    # return settings
+    return schemas.Settings(**settings).dict()
 
 
 def is_location_used() -> bool:
-  # print("get_app_settings():", get_app_settings())
-  return get_app_settings()["use_location"]
+    # print("get_app_settings():", get_app_settings())
+    return get_app_settings()["use_location"]
 
 
 def is_facial_recognition_used() -> bool:
-  # print("get_app_settings():", get_app_settings())
-  return get_app_settings()["use_facial_recognition"]
+    # print("get_app_settings():", get_app_settings())
+    return get_app_settings()["use_facial_recognition"]
 
 
 def is_qr_code_used() -> bool:
-  # print("get_app_settings():", get_app_settings())
-  return get_app_settings()["use_qr_code"]
+    # print("get_app_settings():", get_app_settings())
+    return get_app_settings()["use_qr_code"]
+
+
+def is_ms_auth_used() -> bool:
+    # print("get_app_settings():", get_app_settings())
+    return get_app_settings()["use_ms_auth"]
 
 
 def get_opening_time() -> Dict[str, datetime]:
-  opens = get_app_settings()["opens"]
-  window = get_app_settings()["opening_window"]
+    opens = get_app_settings()["opens"]
+    window = get_app_settings()["opening_window"]
 
-  opens_date = simple_time_to_datetime(opens)
-  return get_start_default_end_datetime(opens_date, window) 
+    opens_date = simple_time_to_datetime(opens)
+    return get_start_default_end_datetime(opens_date, window)
 
 
 def get_closing_time() -> Dict[str, datetime]:
-  closes = get_app_settings()["closes"]
-  window = get_app_settings()["closing_window"]
+    closes = get_app_settings()["closes"]
+    window = get_app_settings()["closing_window"]
 
-  closes_date = simple_time_to_datetime(closes)
-  return get_start_default_end_datetime(closes_date, window) 
+    closes_date = simple_time_to_datetime(closes)
+    return get_start_default_end_datetime(closes_date, window)
 
 
 def is_late_sign_in(dt: datetime) -> bool:
-  usable_dt = simplify_date_time(dt)
-  
-  if usable_dt > get_opening_time()["end"]:
-    return True
-  return False
+    usable_dt = simplify_date_time(dt)
+
+    if usable_dt > get_opening_time()["end"]:
+        return True
+    return False
 
 
 def is_early_sign_out(dt: datetime) -> bool:
-  usable_dt = simplify_date_time(dt)
-  
-  if usable_dt < get_closing_time()["start"]:
-    return True
-  return False
+    usable_dt = simplify_date_time(dt)
+
+    if usable_dt < get_closing_time()["start"]:
+        return True
+    return False
 
 
 def is_overtime_sign_out(dt: datetime) -> bool:
-  usable_dt = simplify_date_time(dt)
-  
-  if usable_dt > get_closing_time()["default"]:
-    return True
-  return False
+    usable_dt = simplify_date_time(dt)
 
+    if usable_dt > get_closing_time()["default"]:
+        return True
+    return False
 
 
 # auth utils
@@ -88,24 +109,25 @@ password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def get_password_hash(password):
-  return password_context.hash(password)
+    return password_context.hash(password)
 
 
 def verify_password(plain_password, hashed_password):
-  return password_context.verify(plain_password, hashed_password)
+    return password_context.verify(plain_password, hashed_password)
 
 
 def get_user_by_email(email: str):
-  return mongo_res(models.User.find_one({'email': email}))
-  
+    return mongo_res(models.User.find_one({"email": {"$regex": email, "$options": "i"}}))
+
 
 def authenticate_user(email: str, password: str):
-  user = get_user_by_email(email)
-  if not user:
-    return False
-  if not verify_password(password, user["hashed_password"]):
-    return False
-  return user
+    user = get_user_by_email(email)
+    if not user:
+        return False
+    if not verify_password(password, user["hashed_password"]):
+        return False
+    return user
+
 
 # //Generate and hash password token
 # User.methods.getResetPasswordToken = function () {
@@ -122,20 +144,24 @@ def authenticate_user(email: str, password: str):
 #   return resetToken;
 # };
 
-def generate_unique_token():
-  # if not string: string = random_string(32)
-  import uuid
-  return uuid.uuid4().hex
 
+def generate_unique_token():
+    # if not string: string = random_string(32)
+    import uuid
+
+    return uuid.uuid4().hex
 
 
 jwt_settings = JWTSettings()
+
 
 def create_access_token(user: User):
     # expires_delta = timedelta(minutes=jwt_settings.access_token_expire_minutes)
     expires_delta = timedelta(days=jwt_settings.access_token_expire)
     to_encode = {"id": str(user["id"]), "exp": datetime.utcnow() + expires_delta}
-    encoded_jwt = jwt.encode(to_encode, jwt_settings.SECRET_KEY, algorithm=jwt_settings.algorithm)
+    encoded_jwt = jwt.encode(
+        to_encode, jwt_settings.SECRET_KEY, algorithm=jwt_settings.algorithm
+    )
     return encoded_jwt
 
 
@@ -144,73 +170,97 @@ security = HTTPBearer()
 
 
 def decode_token_id(request: Request):
-  auth = request.headers.get("Authentication")
-  token = auth.split(" ")[1]
-  print({"auth": auth, "token": token})
-  payload = jwt.decode(token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm])
-  print({"token": token, "payload": payload})
-  user_id = payload.get("id")
-  if user_id is None:
-    raise HTTPException(status_code=401, detail="Invalid authentication credentials")
-  # token_data = TokenData(user_id=user_id)
-
-
-def get_current_active_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-  try:      
-    token = credentials.credentials
-    payload = jwt.decode(token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm])
+    auth = request.headers.get("Authentication")
+    token = auth.split(" ")[1]
+    print({"auth": auth, "token": token})
+    payload = jwt.decode(
+        token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm]
+    )
     print({"token": token, "payload": payload})
     user_id = payload.get("id")
     if user_id is None:
-      raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        raise HTTPException(
+            status_code=401, detail="Invalid authentication credentials"
+        )
     # token_data = TokenData(user_id=user_id)
-  except JWTError:
-    raise HTTPException(status_code=401, detail="Invalid authentication credentials")
-  except AttributeError:
-    # if credentials.credentials doesnt exist
-    raise HTTPException(status_code=401, detail="Invalid authentication credentials...")
-
-  user = mongo_res(models.User.find_one({"_id": ObjectId(user_id)}))
-  if user is None:
-    raise HTTPException(status_code=404, detail="User not found")
-  return user
 
 
-def try_get_current_active_user(credentials: HTTPAuthorizationCredentials | None = Depends(security)):
-  print(credentials.credentials)
-  try:      
-    token = credentials.credentials
-    payload = jwt.decode(token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm])
-    print({"token": token, "payload": payload})
-    user_id = payload.get("id")
-    if user_id is None:
-      return None
-    # token_data = TokenData(user_id=user_id)
-  except JWTError:
-    return None
-  except AttributeError:
-    # if credentials.credentials doesnt exist
-    return None
+def get_current_active_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(
+            token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm]
+        )
+        print({"token": token, "payload": payload})
+        user_id = payload.get("id")
+        if user_id is None:
+            raise HTTPException(
+                status_code=401, detail="Invalid authentication credentials"
+            )
+        # token_data = TokenData(user_id=user_id)
+    except JWTError:
+        raise HTTPException(
+            status_code=401, detail="Invalid authentication credentials"
+        )
+    except AttributeError:
+        # if credentials.credentials doesnt exist
+        raise HTTPException(
+            status_code=401, detail="Invalid authentication credentials..."
+        )
 
-  user = mongo_res(models.User.find_one({"_id": user_id}))
-  if user is None:
-    return None
-  return user
+    user = mongo_res(models.User.find_one({"_id": ObjectId(user_id)}))
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+def try_get_current_active_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+):
+    print(credentials.credentials)
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(
+            token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm]
+        )
+        print({"token": token, "payload": payload})
+        user_id = payload.get("id")
+        if user_id is None:
+            return None
+        # token_data = TokenData(user_id=user_id)
+    except JWTError:
+        return None
+    except AttributeError:
+        # if credentials.credentials doesnt exist
+        return None
+
+    user = mongo_res(models.User.find_one({"_id": user_id}))
+    if user is None:
+        return None
+    return user
 
 
 # def get_current_oauth2_user(token: str = Depends(oauth2_scheme)):
 def get_current_oauth2_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         print({"token": token, "oauth2_scheme": oauth2_scheme})
-        payload = jwt.decode(token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm])
+        payload = jwt.decode(
+            token, jwt_settings.SECRET_KEY, algorithms=[jwt_settings.algorithm]
+        )
         user_id = payload.get("id")
         print({"user_id": user_id, "payload": payload})
 
         if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+            raise HTTPException(
+                status_code=401, detail="Invalid authentication credentials"
+            )
         # token_data = TokenData(user_id=user_id)
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        raise HTTPException(
+            status_code=401, detail="Invalid authentication credentials"
+        )
 
     user = mongo_res(models.User.find_one({"_id": user_id}))
     if user is None:
@@ -219,38 +269,39 @@ def get_current_oauth2_user(token: Annotated[str, Depends(oauth2_scheme)]):
 
     return user
 
+
 # auth utils
 
 
 def random_string(num: int) -> str:
-  import string
-  import random
+    import string
+    import random
 
-  # using random.choices() to generate random strings
-  res = ''.join(random.choices(string.ascii_letters + string.digits, k=num))
-  return res
+    # using random.choices() to generate random strings
+    res = "".join(random.choices(string.ascii_letters + string.digits, k=num))
+    return res
 
 
 def get_file_extension(filePath: str) -> str:
-  file_name, file_extension = os.path.splitext(filePath)
-  print(file_name, file_extension)
-  return file_extension
+    file_name, file_extension = os.path.splitext(filePath)
+    print(file_name, file_extension)
+    return file_extension
 
 
 def validate_email(email: str) -> bool:
-  import re
- 
-  # Make a regular expression for validating email
-  regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+    import re
 
-  if(re.fullmatch(regex, email)):
-    return True
-  return False
+    # Make a regular expression for validating email
+    regex = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b"
+
+    if re.fullmatch(regex, email):
+        return True
+    return False
 
 
-def get_opencv_img_from_buffer(buffer, flags = None):
-  bytes_as_np_array = np.frombuffer(buffer.read(), dtype=np.uint8)
-  return cv2.imdecode(bytes_as_np_array, flags)
+def get_opencv_img_from_buffer(buffer, flags=None):
+    bytes_as_np_array = np.frombuffer(buffer.read(), dtype=np.uint8)
+    return cv2.imdecode(bytes_as_np_array, flags)
 
 
 # def send_email():
@@ -272,52 +323,53 @@ def get_opencv_img_from_buffer(buffer, flags = None):
 #       # TODO: Send email here
 
 
-def send_email(reciepients, subject, message, image_path = None, image_name = '', cc = []):
-  import smtplib
-  from email.mime.text import MIMEText
-  from email.mime.image import MIMEImage
-  from email.mime.multipart import MIMEMultipart
-  
-  email = os.environ['SMTP_EMAIL'] or 'Bizsupport@lotusbetaanalytics.com'
-  password = os.environ['SMTP_PASSWORD']
-  host = os.environ['SMTP_HOST'] or 'smtp.office365.com'
-  port = os.environ['SMTP_PORT'] or 587
+def send_email(reciepients, subject, message, image_path=None, image_name="", cc=[]):
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.image import MIMEImage
+    from email.mime.multipart import MIMEMultipart
 
-  # Create a MIME multipart message
-  msg = MIMEMultipart()
-  msg['From'] = email
-  msg['To'] = ', '.join(reciepients)
-  msg['Cc'] = ', '.join(cc)
-  msg['Subject'] = subject
+    email = os.environ["SMTP_EMAIL"] or "Bizsupport@lotusbetaanalytics.com"
+    password = os.environ["SMTP_PASSWORD"]
+    host = os.environ["SMTP_HOST"] or "smtp.office365.com"
+    port = os.environ["SMTP_PORT"] or 587
 
-  # Attach the message to the MIME message
-  msg.attach(MIMEText(message, 'html'))
-  # msg.attach(MIMEText(message, 'plain'))
+    # Create a MIME multipart message
+    msg = MIMEMultipart()
+    msg["From"] = email
+    msg["To"] = ", ".join(reciepients)
+    msg["Cc"] = ", ".join(cc)
+    msg["Subject"] = subject
 
-  # Attach the image
-  if image_path:
-    with open(image_path, 'rb') as f:
-      img_data = f.read()
-      image = MIMEImage(img_data, name=f'{image_name if image_name else "image"}.png')
-      msg.attach(image)
+    # Attach the message to the MIME message
+    msg.attach(MIMEText(message, "html"))
+    # msg.attach(MIMEText(message, 'plain'))
 
-  # Connect to the SMTP server 
-  server = smtplib.SMTP(host, port)
-  server.starttls()
+    # Attach the image
+    if image_path:
+        with open(image_path, "rb") as f:
+            img_data = f.read()
+            image = MIMEImage(
+                img_data, name=f'{image_name if image_name else "image"}.png'
+            )
+            msg.attach(image)
 
-  # Login to your account
-  server.login(email, password)
+    # Connect to the SMTP server
+    server = smtplib.SMTP(host, port)
+    server.starttls()
 
-  all_reciepients = reciepients + cc
+    # Login to your account
+    server.login(email, password)
 
-  # Send the email
-  response = server.sendmail(email, all_reciepients, msg.as_string())
+    all_reciepients = reciepients + cc
 
-  # Close the connection
-  server.quit()
+    # Send the email
+    response = server.sendmail(email, all_reciepients, msg.as_string())
 
-  return response
+    # Close the connection
+    server.quit()
 
+    return response
 
 
 # # Provide the necessary information
@@ -348,7 +400,7 @@ def send_email(reciepients, subject, message, image_path = None, image_name = ''
 
 #   try:
 #     smtpObj = smtplib.SMTP('localhost')
-#     smtpObj.sendmail(sender, receivers, message)         
+#     smtpObj.sendmail(sender, receivers, message)
 #     print("Successfully sent email")
 #   except SMTPException:
 #     print("Error: unable to send email")
@@ -356,52 +408,63 @@ def send_email(reciepients, subject, message, image_path = None, image_name = ''
 
 # qr code utils
 def generate_qr_code(data_str: str, file_path: str) -> str:
-  import qrcode
-  img = qrcode.make(data_str)
-  type(img)  # qrcode.image.pil.PilImage
-  full_path = f"{file_path}-qr.png"
-  img.save(full_path)
-  return full_path
+    import qrcode
+
+    img = qrcode.make(data_str)
+    type(img)  # qrcode.image.pil.PilImage
+    full_path = f"{file_path}-qr.png"
+    img.save(full_path)
+    return full_path
 
 
-def read_qr_code(file_path: str , is_opencv_img = False) -> str | None:
-  try:
-    print(file_path)
-    img = file_path
-    if not is_opencv_img:
-      img = cv2.imread(file_path)
+def read_qr_code(file_path: str, is_opencv_img=False) -> str | None:
+    try:
+        print(file_path)
+        img = file_path
+        if not is_opencv_img:
+            img = cv2.imread(file_path)
 
-    detect = cv2.QRCodeDetector()
-    value, points, straight_qrcode = detect.detectAndDecode(img)
-    return value
-  except Exception() as e:
-    print(f"Error reading qr code content, {e}")
-    return
+        detect = cv2.QRCodeDetector()
+        value, points, straight_qrcode = detect.detectAndDecode(img)
+        return value
+    except Exception() as e:
+        print(f"Error reading qr code content, {e}")
+        return
+
+
 # qr code utils
 
 
 # facial recognition utils
 def check_face_in_picture(imagePath: str):
-  try:
-    # TODO: reduce frame size and image resolution
-    image_encoding = face_recognition.load_image_file(imagePath)
-    face_encoding = face_recognition.face_encodings(image_encoding)[0]
-    return image_encoding, face_encoding
-  except:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f'No face found in uploaded image')
+    try:
+        # TODO: reduce frame size and image resolution
+        image_encoding = face_recognition.load_image_file(imagePath)
+        face_encoding = face_recognition.face_encodings(image_encoding)[0]
+        return image_encoding, face_encoding
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No face found in uploaded image",
+        )
 
 
 def check_face_match(user_face_encoding, attendance_face_encoding):
-  # matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
-  matches = face_recognition.compare_faces([user_face_encoding], attendance_face_encoding)
-  if True in matches:
-    return True
-  return False
+    # matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+    matches = face_recognition.compare_faces(
+        [user_face_encoding], attendance_face_encoding
+    )
+    if True in matches:
+        return True
+    return False
+
+
 # facial recognition utils
 
 
 # location utils
 from math import radians, sin, cos, sqrt, atan2
+
 
 def calculate_new_coordinates(latitude, longitude, distance):
     # Radius of the Earth in meters
@@ -426,8 +489,10 @@ def calculate_new_coordinates(latitude, longitude, distance):
 
     return new_latitude, new_longitude
 
+
 def degrees(radians):
     return radians * (180 / 3.14159265358979323846)
+
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     # Radius of the Earth in meters
@@ -442,7 +507,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     dlon = lon2_rad - lon1_rad
 
     # Haversine formula
-    a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
+    a = sin(dlat / 2) ** 2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
     # Calculate the distance
@@ -450,52 +515,63 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
     return distance
 
-def check_matching_location(location, long, lat, rad = 0.005):
-  if not (location["longitude"] and location["latitude"]): return True
 
-  long_diff = abs(float(location["longitude"]) - float(long))
-  lat_diff = abs(float(location["latitude"]) - float(lat))
-  # location_rad = float(location["radius"]) if location["radius"] else rad
-  # location_rad = ((float(location["radius"])/111139) * 2) if location["radius"] else rad
+def check_matching_location(location, long, lat, rad=0.005):
+    if not (location["longitude"] and location["latitude"]):
+        return True
 
-  distance = haversine_distance(float(location["latitude"]), float(location["longitude"]), lat, long)
-  if distance <= float(location["radius"]):
-    return True
+    long_diff = abs(float(location["longitude"]) - float(long))
+    lat_diff = abs(float(location["latitude"]) - float(lat))
+    # location_rad = float(location["radius"]) if location["radius"] else rad
+    # location_rad = ((float(location["radius"])/111139) * 2) if location["radius"] else rad
 
-  # if long_diff <= location_rad and lat_diff <= location_rad:
-  #   return True
-  return False
+    distance = haversine_distance(
+        float(location["latitude"]), float(location["longitude"]), lat, long
+    )
+    if distance <= float(location["radius"]):
+        return True
+
+    # if long_diff <= location_rad and lat_diff <= location_rad:
+    #   return True
+    return False
+
+
 # location utils
 
 
 # time utils
 
+
 # convert_current_datetime_to %H:%M datetime
 def simplify_date_time(dt: datetime, format: str = "%H:%M") -> datetime:
-  res = dt.strftime(format)
-  return simple_time_to_datetime(res, format)
+    res = dt.strftime(format)
+    return simple_time_to_datetime(res, format)
 
 
 # convert %H:%M string to datetime
-def simple_time_to_datetime(time: str = '08:00', format: str = "%H:%M") -> datetime:
-  res = datetime.now().strptime(time, format)
-  return res
+def simple_time_to_datetime(time: str = "08:00", format: str = "%H:%M") -> datetime:
+    res = datetime.now().strptime(time, format)
+    return res
 
 
-def get_start_default_end_datetime(dt: datetime, window: int = 15) -> Dict[str, datetime]:
-  start = dt - timedelta(minutes=window)
-  end = dt + timedelta(minutes=window)
-  return {"start": start, "default": dt, "end": end}
+def get_start_default_end_datetime(
+    dt: datetime, window: int = 15
+) -> Dict[str, datetime]:
+    start = dt - timedelta(minutes=window)
+    end = dt + timedelta(minutes=window)
+    return {"start": start, "default": dt, "end": end}
+
 
 # time utils
 
 
 # fix response from mongo db before display
 def mongo_res(instance):
-  if not instance: return
+    if not instance:
+        return
 
-  str_id = str(instance['_id'])
-  instance['id'] = str_id
-  instance['_id'] = str_id
-  # print({"instance": instance})
-  return instance
+    str_id = str(instance["_id"])
+    instance["id"] = str_id
+    instance["_id"] = str_id
+    # print({"instance": instance})
+    return instance
