@@ -438,7 +438,7 @@ def update_user_photo(user_id: str, file: UploadFile = File(...)):
         )
 
     relative_image_path = save_user_image_file(
-        existingUser["first_name"], existingUser["email"]
+        existingUser["first_name"], existingUser["email"], file
     )
 
     # get image and face encodings from uploaded file
