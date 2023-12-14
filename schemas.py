@@ -217,6 +217,7 @@ class SettingsResponse(BaseModel):
 
 class AttendanceHistoryWithUser(AttendanceHistory):
     user: User | None = None
+    location: Location | None = None
 
 
 class AttendanceHistoryResponseWithUser(AttendanceHistoryResponse):

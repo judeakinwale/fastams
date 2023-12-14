@@ -314,6 +314,7 @@ def create_attendance_history(
         "email": email,
         "user_id": user["id"],
         "location_id": location["id"] if location else None,
+        "location": utils.mongo_res(location) if location else None,
         "image": relative_image_path,
         "image_encoding": face_check_result["image_encoding_str"],
         "face_encoding": face_check_result["face_encoding_str"],
@@ -395,7 +396,7 @@ def create_attendance_history(
     if not use_qr_code:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"QR Code Clockin and Clockout is disabled. Kindly contact the admin.",
+            detail=f"QR Code or MS Auth Clockin and Clockout is disabled. Kindly contact the admin.",
         )
 
     user, email = get_user_and_email_from_qr_code(content, file)
@@ -411,6 +412,7 @@ def create_attendance_history(
         "email": email,
         "user_id": user["id"],
         "location_id": location["id"] if location else None,
+        "location": utils.mongo_res(location) if location else None,
         "qr_code": relative_image_path if not content else None,
         "qr_code_content": email,
         "is_signed_in": True,
@@ -443,11 +445,11 @@ def update_attendance_history(
     long: str | None = None,
     lat: str | None = None,
 ):
-    use_qr_code = utils.is_qr_code_used()
+    use_qr_code = utils.is_qr_code_used() or utils.is_ms_auth_used()
     if not use_qr_code:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"QR Code Clockin and Clockout is disabled. Kindly contact the admin.",
+            detail=f"QR Code or MS Auth Clockin and Clockout is disabled. Kindly contact the admin.",
         )
 
     user, email = get_user_and_email_from_qr_code(content, file)
