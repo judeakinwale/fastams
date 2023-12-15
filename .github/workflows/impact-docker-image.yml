@@ -15,6 +15,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    # Login to docker hub (for imapact ams)
+    - name: Login to Docker Hub Container Registry using Docker
+      run: docker login --username ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_PASSWORD }}
+
+
     - name: Build the Docker image
       # run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
       run: docker build . --file Dockerfile --tag fastams:impact
@@ -35,10 +40,6 @@ jobs:
 
 
     # Deploy to docker hub (for impact AMS)
-
-    - name: Login to Docker Hub Container Registry using Docker
-      run: docker login --username ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_PASSWORD }}
-
     - name: Tag the Docker Image For DockerHub
       run: docker tag fastams:impact judeakinwale/fastams:latest
       
