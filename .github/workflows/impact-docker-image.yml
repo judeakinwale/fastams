@@ -1,0 +1,47 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main", "impact" ]
+  pull_request:
+    branches: [ "main", "impact" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build the Docker image
+      # run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      run: docker build . --file Dockerfile --tag fastams:impact
+
+    
+    #  TODO: uncomment the azure registry code for lban deployment
+    # Deploy to azure container registry 
+
+    # - name: Login to Azure Container Registry using Docker
+    #   run: docker login osreglban.azurecr.io --username ${{ secrets.OS_REG_USERNAME }} --password ${{ secrets.OS_REG_PASSWORD }}
+    
+      
+    # - name: Tag the Docker Image
+    #   run: docker tag fastams:lban osreglban.azurecr.io/fastams:lban
+      
+    # - name: Push the Docker Image to Azure Container Registry
+    #   run: docker push osreglban.azurecr.io/fastams:lban
+
+
+    # Deploy to docker hub (for impact AMS)
+
+    - name: Login to Docker Hub Container Registry using Docker
+      run: docker login --username ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Tag the Docker Image For DockerHub
+      run: docker tag fastams:impact judeakinwale/fastams:latest
+      
+    - name: Push the Docker Image to Azure Container Registry
+      run: docker push judeakinwale/fastams:latest
+  
