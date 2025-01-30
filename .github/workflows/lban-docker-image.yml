@@ -2,35 +2,32 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "main", "lban" ]
+    branches: ["main", "lban"]
   pull_request:
-    branches: [ "main", "lban" ]
+    branches: ["main", "lban"]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    
-    #  TODO: uncomment the azure registry code for lban deployment
-    # Deploy to azure container registry 
+      - uses: actions/checkout@v3
 
-    - name: Login to Azure Container Registry using Docker
-      run: docker login osreglban.azurecr.io --username ${{ secrets.OS_REG_USERNAME }} --password ${{ secrets.OS_REG_PASSWORD }}
-    
-    - name: Build the Docker image
-      # run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
-      run: docker build . --file Dockerfile --tag fastams:lban
-      
-    - name: Tag the Docker Image
-      run: docker tag fastams:lban osreglban.azurecr.io/fastams:lban
-      
-    - name: Push the Docker Image to Azure Container Registry
-      run: docker push osreglban.azurecr.io/fastams:lban
+      #  TODO: uncomment the azure registry code for lban deployment
+      # Deploy to azure container registry
 
+      - name: Login to Azure Container Registry using Docker
+        run: docker login lbanapps.azurecr.io --username ${{ secrets.OS_REG_USERNAME }} --password ${{ secrets.OS_REG_PASSWORD }}
+
+      - name: Build the Docker image
+        # run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+        run: docker build . --file Dockerfile --tag fastams:lban
+
+      - name: Tag the Docker Image
+        run: docker tag fastams:lban lbanapps.azurecr.io/fastams:lban
+
+      - name: Push the Docker Image to Azure Container Registry
+        run: docker push lbanapps.azurecr.io/fastams:lban
 
     # # Deploy to Docker Hub
 
@@ -39,7 +36,6 @@ jobs:
 
     # - name: Tag the Docker Image For Docker Hub
     #   run: docker tag fastams:lban judeakinwale/fastams:latest
-      
+
     # - name: Push the Docker Image to Docker Hub
     #   run: docker push judeakinwale/fastams:latest
-  
