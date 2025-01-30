@@ -21,7 +21,7 @@
 # except Exception() as e: print(e)
 
 # import re
- 
+
 # # Make a regular expression
 # # for validating an Email
 # regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
@@ -30,7 +30,7 @@
 # if(re.fullmatch(regex, email)):
 #   print(True)
 # # print(False)
-  
+
 # import os
 
 
@@ -39,7 +39,7 @@
 #   from email.mime.text import MIMEText
 #   from email.mime.image import MIMEImage
 #   from email.mime.multipart import MIMEMultipart
-  
+
 #   email = os.environ['SMTP_EMAIL']
 #   password = os.environ['SMTP_PASSWORD']
 #   host = os.environ['SMTP_HOST']
@@ -62,7 +62,7 @@
 #       image = MIMEImage(img_data, name='image.jpg')
 #       msg.attach(image)
 
-#   # Connect to the SMTP server 
+#   # Connect to the SMTP server
 #   server = smtplib.SMTP(host, port)
 #   server.starttls()
 
@@ -78,7 +78,6 @@
 #   server.quit()
 
 
-
 # # Provide the necessary information
 # email = 'your_email@gmail.com'
 # password = 'your_password'
@@ -88,3 +87,5 @@
 
 # # Call the function to send the email
 # send_email(reciepients, subject, message)
+
+# trigger deploy action
