@@ -6,7 +6,12 @@ from starlette.responses import FileResponse, HTMLResponse
 
 # from sqlite_database import engine # for sqlite db
 # from database import engine # for postgres db
-import models, user, location, attendance, auth, settings
+import models
+import user
+import location
+import attendance
+import auth
+import settings
 from mongo_db import client, db
 
 # models.Base.metadata.create_all(bind=engine)
@@ -20,12 +25,13 @@ db
 
 
 # origins = ["http://localhost:3000", "http://localhost:5000"] # to test cors works
-# origins = ["http://localhost:3000", "https://localhost:3000"] # for production
+origins = ["http://localhost:3000", "https://localhost:3000", "http://localhost:5000",
+           "https://localhost:5000", "https://pyams-fth0ckbffqevayaq.westeurope-01.azurewebsites.net"]  # for production
 
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=origins, # for production
-    allow_origins=["*"],  # for development
+    allow_origins=origins,  # for production
+    # allow_origins=["*"],  # for development
     # # allow_origins cannot be set to ['*'] for credentials to be allowed, origins must be specified
     # allow_credentials=True, # Indicate that cookies should be supported for cross-origin requests. Defaults to False
     allow_methods=["*"],
@@ -35,9 +41,12 @@ app.add_middleware(
 
 app.include_router(auth.router, tags=["Auth"], prefix="/api/v1/auth")
 app.include_router(user.router, tags=["User"], prefix="/api/v1/user")
-app.include_router(location.router, tags=["Location"], prefix="/api/v1/location")
-app.include_router(attendance.router, tags=["Attendance"], prefix="/api/v1/attendance")
-app.include_router(settings.router, tags=["Settings"], prefix="/api/v1/settings")
+app.include_router(location.router, tags=[
+                   "Location"], prefix="/api/v1/location")
+app.include_router(attendance.router, tags=[
+                   "Attendance"], prefix="/api/v1/attendance")
+app.include_router(settings.router, tags=[
+                   "Settings"], prefix="/api/v1/settings")
 
 
 # mount static folders
