@@ -6,13 +6,18 @@ WORKDIR /code
 
 COPY ./requirements.txt /code/requirements.txt
 
+# Install required tools including a newer version of CMake
+RUN apt-get update && \
+    apt-get install -y ffmpeg libsm6 libxext6 wget build-essential cmake && \
+    cmake --version
 
-RUN pip install cmake
+# RUN pip install cmake
 
-RUN pip install --no-cache-dir -r /code/requirements.txt
-# RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+# RUN pip install --no-cache-dir -r /code/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+# RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+
 
 # COPY . /code/app
 COPY . /code
