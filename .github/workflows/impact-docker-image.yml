@@ -29,11 +29,11 @@ jobs:
     # Deploy to azure container registry 
 
     - name: Login to Azure Container Registry using Docker
-      run: docker login osreglban.azurecr.io --username ${{ secrets.OS_REG_USERNAME }} --password ${{ secrets.OS_REG_PASSWORD }}
+      run: docker login ${{ secrets.OS_REG_USERNAME }}.azurecr.io --username ${{ secrets.OS_REG_USERNAME }} --password ${{ secrets.OS_REG_PASSWORD }}
     
       
     - name: Tag the Docker Image
-      run: docker tag fastams:lban osreglban.azurecr.io/fastams:lban
+      run: docker tag fastams:lban ${{ secrets.OS_REG_USERNAME }}.azurecr.io/fastams:lban
       
     - name: Push the Docker Image to Azure Container Registry
       run: docker push ${{ secrets.OS_REG_USERNAME }}.azurecr.io/fastams:lban
