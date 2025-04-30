@@ -33,10 +33,10 @@ jobs:
     
       
     - name: Tag the Docker Image
-      run: docker tag fastams:lban ${{ secrets.OS_REG_USERNAME }}.azurecr.io/fastams:lban
+      run: docker tag fastams:impact ${{ secrets.OS_REG_USERNAME }}.azurecr.io/fastams:impact
       
     - name: Push the Docker Image to Azure Container Registry
-      run: docker push ${{ secrets.OS_REG_USERNAME }}.azurecr.io/fastams:lban
+      run: docker push ${{ secrets.OS_REG_USERNAME }}.azurecr.io/fastams:impact
 
 
     # # Deploy to docker hub (for impact AMS)
