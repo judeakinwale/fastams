@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 COPY . /code
 
 # Create the necessary folders for the images
-# RUN mkdir /code/attendance_images /code/attendance_qr_codes /code/qr_codes /code/training_images /code/temp
+RUN mkdir /code/attendance_images /code/attendance_qr_codes /code/qr_codes /code/training_images /code/temp
 
 # EXPOSE 80 443
 # EXPOSE 80
